@@ -326,9 +326,9 @@ function applyHighlight() {
   const sel = state.sel;
   cadGhost(!!sel);
   for (const c of state.cables) {
-    const visible = state.cats.has(c.cat);
+    const visible = shown(c);
     cableMeshes.get(c.id).forEach((e, i) => {
-      e.grp.visible = visible || (sel && sel.id === c.id);
+      e.grp.visible = !!(visible || (sel && sel.id === c.id));   /* three.js hides only on === false */
       if (!sel) { e.mat.opacity = 1; e.mat.emissiveIntensity = 0; if (e.grp.userData.tag) e.grp.userData.tag.visible = false; return; }
       const mine = sel.id === c.id;
       const cur = mine && i === state.step, done = mine && i < state.step;
@@ -420,6 +420,22 @@ function groupKey(c) {
   const s = c.id.split('-')[0];
   return '2 ' + s.padStart(5, ' ');
 }
+/* front cables (racks with front power AND front communication): Power / Comm / Both */
+let frontShow = 'dc';
+try { const v = localStorage.getItem('wirelens.front'); if (['dc', 'comm', 'both'].includes(v)) frontShow = v; } catch (e) { /* no storage */ }
+function shown(c) { return state.cats.has(c.cat) && (!c.front || frontShow === 'both' || c.cat === frontShow); }
+function setupFrontSeg() {
+  const seg = $('frontSeg'), kinds = new Set(state.cables.filter(c => c.front).map(c => c.cat));
+  if (!seg || !(kinds.has('dc') && kinds.has('comm'))) return;
+  seg.hidden = false;
+  const mark = () => seg.querySelectorAll('[data-front]').forEach(b => { b.classList.toggle('on', b.dataset.front === frontShow); b.setAttribute('aria-pressed', String(b.dataset.front === frontShow)); });
+  seg.querySelectorAll('[data-front]').forEach(b => b.onclick = () => {
+    frontShow = b.dataset.front; try { localStorage.setItem('wirelens.front', frontShow); } catch (e) { /* no storage */ }
+    if (state.sel && !shown(state.sel)) selectCable(null);
+    mark(); renderList(); applyHighlight();
+  });
+  mark();
+}
 function renderChips() {
   $('chips').innerHTML = Object.entries(GUIDE_CATS).map(([k, v]) =>
     `<button class="chip" data-cat="${k}" aria-pressed="${state.cats.has(k)}"><i style="background:${v.color}"></i>${esc(v.label)}</button>`).join('');
@@ -430,7 +446,7 @@ function renderChips() {
 }
 function renderList() {
   const q = state.query.trim().toLowerCase();
-  const items = state.cables.filter(c => state.cats.has(c.cat) && (!q || (c.title + ' ' + c.part + ' ' + c.id + ' ' + (c.to.ext || '')).toLowerCase().includes(q)));
+  const items = state.cables.filter(c => shown(c) && (!q || (c.title + ' ' + c.part + ' ' + c.id + ' ' + (c.to.ext || '')).toLowerCase().includes(q)));
   const groups = {};
   items.forEach(c => (groups[groupKey(c)] = groups[groupKey(c)] || []).push(c));
   const keys = Object.keys(groups).sort();
@@ -533,7 +549,7 @@ function pick(ev) {
     const u = h.object.userData;
     if (u.type !== 'cable') return h.object.visible;
     const c = state.cables.find(x => x.id === u.id);
-    return state.cats.has(c.cat) && (!state.sel || state.sel.id === c.id || cableMeshes.get(c.id)[0].mat.opacity > 0.2);
+    return shown(c) && (!state.sel || state.sel.id === c.id || cableMeshes.get(c.id)[0].mat.opacity > 0.2);
   });
   return hits.length ? hits[0].object.userData : null;
 }
@@ -636,7 +652,7 @@ async function rackPicker() {
   buildCables();
   $('cadBtn').onclick = () => setCad(!cad.visible);
   loadCad(r);
-  renderChips(); renderList(); applyHighlight();
+  setupFrontSeg(); renderChips(); renderList(); applyHighlight();
   const counts = {}; r.parts.forEach(p => { counts[p.kind] = (counts[p.kind] || 0) + 1; });
   $('about').innerHTML = `<b>Rack ${esc(r.name)}</b> from <i>${esc(r.source)}</i> (${r.from === 'step' ? 'SolidWorks 3D model' : 'front view, scale 1:' + r.scale}). ${counts.ssc || 0} SSCs, ${counts.acdp || 0} ACDPs, ${counts.msm || 0} MSM, ${counts.jb || 0} junction boxes, ${counts.module || 0} modules; ${state.cables.length} cables.
     Routes follow ${Object.keys(TECHNOTES).join(', ')}.<br><b>Draft assumptions</b><ul>${(r.assumptions || GUIDE_ASSUMPTIONS).map(a => '<li>' + esc(a) + '</li>').join('')}</ul>`;

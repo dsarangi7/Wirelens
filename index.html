@@ -25,6 +25,9 @@ header h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--muted); w
 .btn:hover { background: rgba(154,171,198,.12); }
 .rack-sel { background: var(--card); max-width: 260px; }
 .btn.on { background: var(--blue2); border-color: var(--blue2); color: #fff; }
+.seg { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1px solid var(--line); }
+.seg[hidden] { display: none; }
+.seg-l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 4px; }
 .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 aside { border-right: 1px solid var(--line); background: var(--bg2); display: flex; flex-direction: column; min-height: 0; position: relative; }
 .resizer { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 5; touch-action: none; }
@@ -117,6 +120,7 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
       <button class="btn" data-view="msm">MSM</button>
       <button class="btn" data-view="iso">Overview</button>
       <button class="btn" id="cadBtn" hidden aria-pressed="false">CAD model</button>
+      <span class="seg" id="frontSeg" role="group" aria-label="Front cables" hidden><span class="seg-l">Front</span><button class="btn" data-front="dc">Power</button><button class="btn" data-front="comm">Comm</button><button class="btn" data-front="both">Both</button></span>
     </div>
   </header>
   <aside aria-label="Cables">
