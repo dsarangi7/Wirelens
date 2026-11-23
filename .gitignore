@@ -1,0 +1,7 @@
+# AYK technote PDFs and drawings are confidential: kept local only
+technotes/
+*.pdf
+*.STEP
+*.step
+*.SLDASM
+__pycache__/
