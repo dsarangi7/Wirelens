@@ -171,6 +171,9 @@ function buildRack(rack) {
     addPort(p, { id: f[0], label: f[0], conn: 'DC' }, pos, true);
   }
   /* measured front plugs (3D racks) */
+  /* measured rear sockets of parts without a technote panel figure (e.g. junction boxes): printed names in p.portLabels */
+  for (const p of rack.parts) if (!GUIDE_REAR_PORTS[p.kind] && p.ports && p.portLabels) for (const id of Object.keys(p.portLabels))
+    addPort(p, { id: id, label: p.portLabels[id], conn: 'other' }, p.ports[id], false);
   for (const p of rack.parts) if (p.ports && p.labels) for (const id of Object.keys(p.labels))
     addPort(p, { id: id, label: id + ' · ' + p.labels[id], conn: 'DC' }, p.ports[id], true);
 }
@@ -208,7 +211,8 @@ function rearPanel(p) {
   g.fillText(p.id + ' (rear)', 18, Math.round(W / 22));
   const fs = Math.round(W / (p.kind === 'msm' ? 58 : 44));
   g.font = `600 ${fs}px Inter, Segoe UI, sans-serif`; g.textAlign = 'center';
-  for (const t of list) {
+  const named = list.map(q => Object.assign({}, q, { label: (p.portLabels && p.portLabels[q.id]) || q.label }));
+  for (const t of named) {
     const x = t.u * W, y = t.v * H;
     g.fillStyle = '#1b2433'; g.fillText(t.label, x, y - fs * 1.9);
     g.fillStyle = '#2b3445';
@@ -220,7 +224,7 @@ function rearPanel(p) {
   plane.rotation.y = Math.PI;
   plane.position.set((p.x0 + p.x1) / 2 * MM, (p.y0 + p.y1) / 2 * MM, ((p.z0 != null ? p.z0 : G.zFace) - 1.5) * MM);
   simple.add(plane);
-  for (const t of list) addPort(p, t, guidePortPos(state.rack, { dev: p.id, port: t.id }), false);
+  for (const t of named) addPort(p, t, guidePortPos(state.rack, { dev: p.id, port: t.id }), false);
 }
 
 function addPort(part, t, pos, front) {
@@ -279,7 +283,7 @@ function buildCables() {
       } else grp.add(tube(curve, radius, mat));
       if (leg.holder) {             /* inline connector in its holder */
         const end = v3(leg.pts[leg.pts.length - 1]);
-        const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.075, 16), MAT.conn); conn.rotation.z = Math.PI / 2; conn.position.copy(end).add(new THREE.Vector3(SIDE * 0.03, 0, 0)); grp.add(conn);
+        const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.075, 16), MAT.conn); conn.rotation.z = Math.PI / 2; conn.position.copy(end).add(new THREE.Vector3((leg.side || SIDE) * 0.03, 0, 0)); grp.add(conn);
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.002, 6, 20), new THREE.MeshBasicMaterial({ color: leg.extra ? 0xf59e0b : 0x22c55e })); ring.rotation.y = Math.PI / 2; ring.position.copy(conn.position); grp.add(ring);
         if (!state.rack.holders) box(0.02, 0.03, 0.03, MAT.holder, end.x - 0.012, end.y - 0.022, end.z);
       }
@@ -368,7 +372,7 @@ const VIEWS = {
   front: r => [new THREE.Vector3(r.width / 2 * MM - 0.6, 1.5, 5.6), new THREE.Vector3(r.width / 2 * MM, 1.2, 0)],
   panel: r => { const x = G.panelX * MM, y = (r.holders && r.holders.length ? r.holders[0].y : 1400) * MM;
     return [new THREE.Vector3(x + SIDE * 1.7, y + 0.15, -0.9), new THREE.Vector3(x, y, -0.4)]; },
-  msm: r => { const m = r.parts.find(p => p.id === 'MSM1') || r.parts.find(p => p.kind === 'msm'); return [new THREE.Vector3((m.x0 + m.x1) / 2 * MM - 0.4, (m.y1 + 150) * MM, -2.4), new THREE.Vector3((m.x0 + m.x1) / 2 * MM, (m.y0 + m.y1) / 2 * MM - 0.1, -0.75)]; },
+  msm: r => { const m = r.parts.find(p => p.id === 'MSM1') || r.parts.find(p => p.kind === 'msm'); if (!m) return VIEWS.iso(r); return [new THREE.Vector3((m.x0 + m.x1) / 2 * MM - 0.4, (m.y1 + 150) * MM, -2.4), new THREE.Vector3((m.x0 + m.x1) / 2 * MM, (m.y0 + m.y1) / 2 * MM - 0.1, -0.75)]; },
   iso: r => [new THREE.Vector3(SIDE < 0 ? -1.6 : r.width * MM + 1.6, 2.9, -3.6), new THREE.Vector3(r.width / 2 * MM, 1.0, -0.4)],
 };
 function setView(name) {
@@ -379,6 +383,7 @@ function setView(name) {
 /* ---------------- UI ---------------- */
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 function groupKey(c) {
+  if (c.group) return '1 ' + c.group;
   if (c.cat === 'ext') return '0 Customer connections · Signal Inter-Connection Panel';
   if (c.id.startsWith('MSM-')) return '1 MSM';
   const s = c.id.split('-')[0];
@@ -409,6 +414,7 @@ function endName(e) {
 }
 function portLabel(dev, port) {
   const p = state.rack.parts.find(x => x.id === dev); if (!p) return port;
+  if (p.portLabels && p.portLabels[port]) return p.portLabels[port];
   if (p.labels && p.labels[port]) return port + ' (' + p.labels[port] + ')';
   const t = (GUIDE_REAR_PORTS[p.kind] || []).find(x => x.id === port);
   return t ? t.label : port;
@@ -427,9 +433,10 @@ function renderCard() {
       <dt>Cable</dt><dd>${esc(c.part)}</dd>
       <dt>Connector</dt><dd>${esc(conn.name || c.conn)}</dd>
       <dt>Pins</dt><dd>${esc(conn.pins || '–')}</dd>
+      ${(c.facts || []).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
       <dt>AYK supplies</dt><dd>${esc(c.supply)}</dd>
       ${c.customer ? `<dt>Customer</dt><dd>${esc(c.customer)}</dd>` : ''}
-      <dt>Technotes</dt><dd>${c.tn.map(t => esc(t + ' ' + GUIDE_TECHNOTES[t])).join('<br>')}</dd>
+      <dt>Technotes</dt><dd>${c.tn.map(t => esc(t + ' ' + (TECHNOTES[t] || ''))).join('<br>')}</dd>
     </dl>
     <div class="player">
       <button class="btn" id="prev" aria-label="Previous step">◀</button>
@@ -537,11 +544,17 @@ function loop() {
   renderer.render(scene, camera); labels.render(scene, camera);
 }
 
-/* rack picker (assets/guide/racks.json) */
+/* rack picker: assets/guide/racks.json (published) + projects/racks.local.json
+   (local only, git-ignored: confidential project racks, {id, label, url}) */
+async function rackList() {
+  const get = async u => { try { const r = await fetch(u); return r.ok ? await r.json() : []; } catch (e) { return []; } };
+  return (await get('assets/guide/racks.json')).concat(await get('projects/racks.local.json'));
+}
+let TECHNOTES = GUIDE_TECHNOTES;
 async function rackPicker() {
   const sel = $('rackSel');
   try {
-    const list = await (await fetch('assets/guide/racks.json')).json();
+    const list = await rackList();
     sel.innerHTML = list.map(x => `<option value="${esc(x.id)}"${x.id === RACK ? ' selected' : ''}>${esc(x.label)}</option>`).join('');
     sel.hidden = list.length < 2;
     sel.onchange = () => { location.search = '?rack=' + encodeURIComponent(sel.value); };
@@ -551,7 +564,8 @@ async function rackPicker() {
 /* ---------------- start ---------------- */
 (async function start() {
   try {
-    const res = await fetch('assets/guide/' + encodeURIComponent(RACK) + '.json');
+    const entry = (await rackList()).find(x => x.id === RACK);
+    const res = await fetch(entry && entry.url ? entry.url : 'assets/guide/' + encodeURIComponent(RACK) + '.json');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     state.rack = await res.json();
   } catch (err) {
@@ -560,6 +574,7 @@ async function rackPicker() {
   }
   const r = state.rack;
   G = guideGeom(r); SIDE = G.panelSide || -1;
+  TECHNOTES = Object.assign({}, GUIDE_TECHNOTES, r.technotes || {});
   $('title').textContent = 'Rack ' + r.name + ' · customer wiring guide';
   rackPicker();
   state.cables = guideCables(r);
@@ -571,7 +586,7 @@ async function rackPicker() {
   renderChips(); renderList(); applyHighlight();
   const counts = {}; r.parts.forEach(p => { counts[p.kind] = (counts[p.kind] || 0) + 1; });
   $('about').innerHTML = `<b>Rack ${esc(r.name)}</b> from <i>${esc(r.source)}</i> (${r.from === 'step' ? 'SolidWorks 3D model' : 'front view, scale 1:' + r.scale}). ${counts.ssc || 0} SSCs, ${counts.acdp || 0} ACDPs, ${counts.msm || 0} MSM, ${counts.jb || 0} junction boxes, ${counts.module || 0} modules; ${state.cables.length} cables.
-    Routes follow ${Object.keys(GUIDE_TECHNOTES).join(', ')}.<br><b>Draft assumptions</b><ul>${(r.assumptions || GUIDE_ASSUMPTIONS).map(a => '<li>' + esc(a) + '</li>').join('')}</ul>`;
+    Routes follow ${Object.keys(TECHNOTES).join(', ')}.<br><b>Draft assumptions</b><ul>${(r.assumptions || GUIDE_ASSUMPTIONS).map(a => '<li>' + esc(a) + '</li>').join('')}</ul>`;
   $('loading').remove();
   const [p, t] = VIEWS.rear(r); camera.position.copy(p); controls.target.copy(t);
   loop();

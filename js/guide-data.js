@@ -64,6 +64,8 @@ const GUIDE_CATS = {
   estop: { label: 'E-stop', color: '#f59e0b' },
   ext: { label: 'Customer connection', color: '#a855f7' },
   dc: { label: 'DC bus (front)', color: '#7c2d12' },
+  hvil: { label: 'Ext-HVIL loop', color: '#14b8a6' },
+  valve: { label: 'Master valve line', color: '#eab308' },
 };
 
 /* Port LABELS are the names printed on the hardware / technote panel figures
@@ -201,6 +203,8 @@ function guideHolder(kind, i, rack, n) {
  * @return {Array<Object>} {id, cat, title, from, to, part, conn, supply, customer, tn, holder?, ext?}
  */
 function guideCables(rack) {
+  /* project racks carry their own cable list (from the project's cable specification) */
+  if (rack.cables) return rack.cables.map(c => Object.assign({}, c));
   const sscs = guideSorted(rack, 'ssc'), acdps = guideSorted(rack, 'acdp'), msm = guideSorted(rack, 'msm')[0];
   const jbs = rack.parts.filter(p => p.kind === 'jb').sort((a, b) => a.x0 - b.x0);
   const acFeed = guideFeed(acdps, sscs, 3), jbFeed = guideFeed(jbs, sscs, 2);
@@ -304,11 +308,22 @@ function guideRoute(rack, cable, lane) {
     return legs;
   }
 
+  if (!cable.from.dev && cable.holder) { /* cable that only passes the panel (e.g. a line from outside the rack) */
+    const h = cable.holder, tn = cable.tn[cable.tn.length - 1];
+    leg('Snap the inline connector into its holder on the Signal Inter-Connection Panel' + (h.panel ? ' (Panel ' + h.panel + ', H' + h.n + ')' : '') + '.', tn,
+      [[h.x - side * 60, h.y, h.z], [h.x, h.y, h.z]], { holder: true });
+    leg(cable.customer || 'Customer cable.', tn,
+      [[h.x, h.y, h.z], [h.x + side * 160, h.y - 20, h.z], [h.x + side * 520, h.y - 60, h.z]], { customer: true });
+    return legs;
+  }
+
   const sidePosts = dev => [Math.max(...posts.filter(x => x <= dev.x0 + 30)), Math.min(...posts.filter(x => x >= dev.x1 - 30))];
   /* force: use this post (both ends share a post when they can) */
   const exitFrom = (ref, towardX, force) => {
     const dev = guidePart(rack, ref.dev), p = guidePortPos(rack, ref);
     const goLeft = (force != null ? force : towardX) < guideCx(dev);
+    /* words: x < centre is 'left' seen from the front; racks whose documents name sides from the rear set geom.sideView = 'rear' */
+    const L = (G.sideView === 'rear') !== goLeft, lw = L ? 'left' : 'right', Lw = L ? 'Left' : 'Right';
     const post = force != null ? force : sidePosts(dev)[goLeft ? 0 : 1];
     /* slot routing (3D CAD racks): the run behind a device stays in its own slot */
     const zb = (G.slotRouting && dev.z0 != null ? dev.z0 - 45 : G.zBracket) + oz, zc = G.zClamp + oz;
@@ -337,16 +352,23 @@ function guideRoute(rack, cable, lane) {
       return { post: post, y: grommet, legs: [
         ['Route the cable from the rear SSC port upward to the top and pass it over the top to the fixing point.', 'TN0160',
           [p, [p[0], p[1], zb], [p[0], top, zb], [side + ox * 0.5, top, zb]]],
-        ['Route it back down along the fixing bracket on the ' + (goLeft ? 'left' : 'right') + ' side of the SSC, through the round cable-protection grommet, and tie it to the bracket.', 'TN0160',
+        ['Route it back down along the fixing bracket on the ' + lw + ' side of the SSC, through the round cable-protection grommet, and tie it to the bracket.', 'TN0160',
           [[side + ox * 0.5, top, zb], [side + ox * 0.5, grommet, zb]]],
-        [(goLeft ? 'Left' : 'Right') + ' side: fix the cable to the ' + (goLeft ? 'left' : 'right') + '-side cable clamp. Keep it smooth: not sharply bent, pulled tight or touching other parts.', 'TN0160',
+        [Lw + ' side: fix the cable to the ' + lw + '-side cable clamp. Keep it smooth: not sharply bent, pulled tight or touching other parts.', 'TN0160',
           [[side + ox * 0.5, grommet, zb], [post + ox, grommet, zb], [post + ox, grommet, zc]]],
+      ] };
+    }
+    if (dev.kind === 'jb') {   /* junction box on top of the rack: down its rear to the rack post */
+      const y = (dev.y0 - 40) + oy * 0.4;
+      return { post: post, y: y, legs: [
+        ['Plug into the junction-box socket and run the cable down the rear of the junction box to the rack post.', 'TN0160',
+          [p, [p[0], p[1], zb], [p[0], y, zb], [post + ox, y, zb], [post + ox, y, zc]]],
       ] };
     }
     /* ACDP (TN0159): to the left or right side sheet metal, cable ties */
     const y = p[1] - 30 + oy * 0.4;
     return { post: post, y: y, legs: [
-      ['Route the power cable from the ACDP port to the ' + (goLeft ? 'left' : 'right') + '-side sheet metal and fix it with cable ties.', 'TN0159',
+      ['Route the power cable from the ACDP port to the ' + lw + '-side sheet metal and fix it with cable ties.', 'TN0159',
         [p, [p[0], p[1], zb], [p[0], y, zb], [post + ox, y, zb], [post + ox, y, zc]]],
     ] };
   };
@@ -354,21 +376,29 @@ function guideRoute(rack, cable, lane) {
   const zc = G.zClamp + oz;
 
   if (cable.to.ext) { /* device -> bottom panel -> Signal Inter-Connection Panel -> customer */
-    const a = exitFrom(cable.from, side * 1e9), h = cable.holder, by = G.bottomY + 12 + oy * 0.5, rx = G.panelRiserX + ox * (G.slotRouting ? 0.2 : 0.5);
+    const h = cable.holder, hs = h.side || side;   /* racks with panels on both sides give the side per holder */
+    const a = exitFrom(cable.from, hs * 1e9), by = G.bottomY + 12 + oy * 0.5, rx = (h.riserX != null ? h.riserX : G.panelRiserX) + ox * (G.slotRouting ? 0.2 : 0.5);
     a.legs.forEach(([r, t, pts]) => leg(r, t, pts));
+    if (G.directPanel) {   /* panels beside the device column: along the post clamps straight to the panel */
+      leg('Run along the vertical cable clamps on the rack post to the height of the panel.', 'TN0163',
+        [[a.post + ox, a.y, zc], [a.post + ox, h.y, zc]]);
+      leg('Cross to the vertical bracket at the side of the panels and tie the bundle to it.', 'TN0160',
+        [[a.post + ox, h.y, zc], [rx, h.y, zc], [rx, h.y, h.z]]);
+    } else {
     leg('Run down the vertical cable clamps to the bottom panel.', cable.tn[0] === 'TN0159' ? 'TN0160' : 'TN0163',
       [[a.post + ox, a.y, zc], [a.post + ox, by, zc]]);
     leg('Route along the bottom panel and secure the cable with the fixing devices (they can be stacked in layers for more cables).', 'TN0163',
       [[a.post + ox, by, zc], [rx, by, zc]]);
     leg('Route upward from the bottom panel and tie the bundle to the vertical bracket at the side of the panels.', 'TN0160',
       [[rx, by, zc], [rx, h.y, zc], [rx, h.y, h.z]]);
-    leg('Snap the inline connector into its holder on the Signal Inter-Connection Panel (' + h.pad + ' mm silicone pad: ' + (h.pad === 2 ? 'power' : 'communication') + ' connector).' +
-      (h.extra ? ' The CAD panel has no free holder for this one: confirm its position with AYK.' : ''), cable.tn[0],
-      [[rx, h.y, h.z], [h.x, h.y, h.z]], { holder: true, extra: h.extra || undefined });
+    }
+    leg('Snap the inline connector into its holder on the Signal Inter-Connection Panel' + (h.panel ? ' (Panel ' + h.panel + ', H' + h.n + (h.pn ? ', cable ' + h.pn : '') + ')' : '') + ' (' + h.pad + ' mm silicone pad: ' + (h.pad === 2 ? 'power' : 'communication') + ' connector).' +
+      (h.extra ? ' The CAD panel has no free holder for this one: confirm its position with AYK.' : ''), cable.holderTn || cable.tn[0],
+      [[rx, h.y, h.z], [h.x, h.y, h.z]], { holder: true, extra: h.extra || undefined, side: hs });
     const T = rack.trunk;
-    leg(cable.customer || 'Customer cable.', cable.tn[0], T
-      ? [[h.x, h.y, h.z], [h.x + side * 25, h.y, h.z], [T.x, h.y, T.z], [T.x, T.y0 + 40, T.z], [T.x + side * 260, T.y0 - 40, T.z + 160]]
-      : [[h.x, h.y, h.z], [h.x + side * 160, h.y - 20, h.z], [h.x + side * 520, h.y - 60, h.z]], { customer: true });
+    leg(cable.customer || 'Customer cable.', cable.holderTn || cable.tn[0], T
+      ? [[h.x, h.y, h.z], [h.x + hs * 25, h.y, h.z], [T.x, h.y, T.z], [T.x, T.y0 + 40, T.z], [T.x + hs * 260, T.y0 - 40, T.z + 160]]
+      : [[h.x, h.y, h.z], [h.x + hs * 160, h.y - 20, h.z], [h.x + hs * 520, h.y - 60, h.z]], { customer: true });
     return legs;
   }
 

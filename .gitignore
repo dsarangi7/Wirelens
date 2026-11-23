@@ -5,3 +5,11 @@ technotes/
 *.step
 *.SLDASM
 __pycache__/
+
+# Project source data (drawings, STEP, technotes): local only
+*Cable and Rack Arrangement/
+*.dxf
+*.DXF
+
+# Confidential project rule data (customer projects): local only
+projects/

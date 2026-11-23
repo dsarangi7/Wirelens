@@ -9,7 +9,7 @@ Frame: the STEP's own (SolidWorks) frame, which for the AYK rack subassemblies i
 already the guide frame: x to the right seen from the front, y up, z = 0 at the
 front face of the modules, negative towards the rear. GLB units are metres.
 
-Needs Python 3.10+ with:  pip install cascadio trimesh numpy fast-simplification
+Needs Python 3.10+ with:  pip install cascadio trimesh numpy fast-simplification scipy (scipy for --hull)
 Run from the repo root:
   python tools/step-to-guide.py "<path>/A2045601 S10195 Rack_Subassembly_1.STEP" s10195-r1
 then:
@@ -47,6 +47,15 @@ LAYERS = [
     ('frame', [r'Rack Vertical', r'P4578001', r'Rack_Bottom', r'Top Cover', r'P4578101', r'P4329601', r'P4249604'], '#56606e'),
 ]
 FACE_CAP = 500           # decimate any single part above this many faces
+HULL = False             # --hull: convex hull for parts still > 3x FACE_CAP after decimation
+
+# --profile <file.json>: part patterns for another rack family, kept with that project:
+#   {"drop": "<extra regex of parts to leave out>", "layers": [[layer, [name regexes], "#colour"], ...]}
+# --axes: STEP axis that becomes guide x, y, z ('-n' = that axis negated, keeps a proper rotation), e.g.
+#   'yzx' for STEPs with x = depth (rear at low x), y = along the rack, z = up;
+#   '-zyx' for STEPs with y = up, z = along the rack, x = depth.
+# After rotating, the model is shifted so x, y start at 0 and z = 0 at the module front faces.
+AXES = {'xyz': [0, 1, 2], 'yzx': [1, 2, 0], '-zyx': [-3, 1, 0]}   # -n-1 = that axis negated
 
 
 def layer_of(name):
@@ -64,8 +73,25 @@ def main():
     if len(sys.argv) < 3:
         print(__doc__)
         sys.exit(1)
-    src, name = sys.argv[1], sys.argv[2]
-    out_dir = sys.argv[3] if len(sys.argv) > 3 else os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'guide')
+    global DROP, LAYERS, FACE_CAP
+    args = sys.argv[1:]
+    opt = {}
+    for k in ('--profile', '--axes', '--face-cap'):
+        if k in args:
+            i = args.index(k); opt[k] = args[i + 1]; del args[i:i + 2]
+    if opt.get('--profile'):
+        with open(opt['--profile'], encoding='utf-8') as pf:
+            prof = json.load(pf)
+        DROP = re.compile(DROP.pattern + ('|' + prof['drop'] if prof.get('drop') else ''), re.I)
+        LAYERS = [tuple(x) for x in prof['layers']]
+    axes = AXES[opt.get('--axes', 'xyz')]
+    FACE_CAP = int(opt.get('--face-cap', FACE_CAP))
+    global HULL
+    HULL = '--hull' in args
+    if HULL:
+        args.remove('--hull')
+    src, name = args[0], args[1]
+    out_dir = args[2] if len(args) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'guide')
     os.makedirs(out_dir, exist_ok=True)
 
     import cascadio
@@ -85,6 +111,20 @@ def main():
         w.merge_vertices()
         items.append((g, layer_of(g), w))
 
+    if axes != [0, 1, 2]:   # rotate into the guide frame, then shift
+        R = np.zeros((4, 4)); R[3, 3] = 1
+        for new, old in enumerate(axes):
+            R[new, old if old >= 0 else -old - 1] = 1 if old >= 0 else -1
+        for _, _, m in items:
+            m.apply_transform(R)
+        allv = np.vstack([m.bounds for _, _, m in items])
+        mods = [m.bounds[1][2] for _, l, m in items if l == 'module']
+        shift = np.eye(4)
+        shift[:3, 3] = [-allv[:, 0].min(), -allv[:, 1].min(), -(max(mods) if mods else allv[:, 2].max())]
+        for _, _, m in items:
+            m.apply_transform(shift)
+        print('frame: axes', opt.get('--axes'), 'shift (m)', shift[:3, 3].round(4).tolist())
+
     # ---------- measured parts (mm) ----------
     def bb(m):
         lo, hi = m.bounds * 1000.0
@@ -97,7 +137,9 @@ def main():
     with open(os.path.join(out_dir, name + '.parts.json'), 'w', encoding='utf-8') as f:
         json.dump({
             'format': 'wireflow-step-parts', 'version': 1, 'source': os.path.basename(src), 'units': 'mm',
-            'bounds': [round(float(v) * 1000, 1) for v in sc.bounds.flatten()],
+            'bounds': [round(float(v) * 1000, 1) for v in np.concatenate([
+                np.min([m.bounds[0] for _, _, m in items], axis=0), np.max([m.bounds[1] for _, _, m in items], axis=0)])],
+            'frame': {'profile': opt.get('--profile', 's10195'), 'axes': opt.get('--axes', 'xyz')},
             'items': [x for x in found if not DROP.search(x['name'])],
         }, f, ensure_ascii=False)
 
@@ -116,6 +158,13 @@ def main():
                     m = trimesh.Trimesh(v, f, process=False)
             except Exception as e:  # keep the full mesh
                 print('  decimation skipped for', g, e)
+        if HULL and len(m.faces) > 3 * FACE_CAP and layer not in ('module', 'duct'):
+            try:   # small detailed parts (connectors, fasteners) that decimation cannot reduce further
+                h = m.convex_hull
+                if len(h.faces) < len(m.faces):
+                    m = h
+            except Exception:
+                pass
         per.setdefault(layer, []).append(m)
         kept += 1
 

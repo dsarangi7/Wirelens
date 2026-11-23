@@ -109,3 +109,20 @@ DXF fallback (front view only): `node tools/make-guide-rack.js <dxf> <id> --scal
 - Use flat shading for the CAD (the GLB has no normals).
 - `camera.setViewOffset` keeps the subject clear of the card.
 - Must be served over http (it fetches JSON and GLB).
+
+## Other rack families and confidential projects
+`python -I tools/step-to-guide.py --profile <project>/step-profile.json --axes yzx --face-cap 300 --hull <STEP> <id> <out_dir>`
+- `--profile <file.json>`: `{"drop": "<extra regex>", "layers": [[layer, [name regexes], "#colour"], ...]}` for racks whose part numbers differ.
+  Keep a confidential project's profile in its git-ignored folder, never in `tools/`.
+- `--axes`: when the STEP frame is not the guide frame. `yzx`: x = depth, y = along, z = up. `-zyx`: y = up, z = along, x = depth.
+  The model is then shifted so x, y start at 0 and z = 0 at the module front faces.
+- `--hull` (needs scipy): convex hull for parts still > 3x the face cap after decimation (connectors, fasteners): about 19 MB -> 8 MB.
+- **Confidential projects live in `projects/<name>/` (git-ignored; the GitHub repo is public).** No project names, part numbers or
+  banks in committed files. The viewer lists them through `projects/racks.local.json` [{id, label, url}] (git-ignored);
+  the public picker only reads `assets/guide/racks.json`.
+- Project racks can carry: `rack.cables` (explicit list, used as-is by `guideCables`), `cable.facts` [[label, value]] (card rows),
+  `cable.holder` {x,y,z,pad,panel,n,pn,side?,riserX?}, `cable.holderTn` (technote cited on the holder/customer steps), `cable.group`
+  (list heading), holder-only cables (no `from.dev`), `rack.technotes` (extra technote names), `part.portLabels` (printed names
+  overriding the technote figure). Cable categories `hvil` and `valve`.
+- `geom.sideView: 'rear'`: route texts name left/right as seen from the rear (geometry stays in the front-view frame).
+  Per-holder `side` / `riserX` for racks with panels on both sides; `geom.directPanel` runs along the post straight to the panel.
