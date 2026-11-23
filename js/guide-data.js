@@ -351,9 +351,14 @@ function guideRoute(rack, cable, lane) {
     }
     if (dev.kind === 'ssc') {
       const top = Math.min(dev.y1 + 30 + oy * 0.3, dev.slotTop ? dev.slotTop - 4 : 1e9), side = goLeft ? dev.x0 + 25 : dev.x1 - 25, grommet = dev.y0 + 80;
+      /* TN0160 Fig. 1 / 2: up from the rear port, then a loop over the top of the SSC: forward to the front
+         edge, across, and back to the rear on the side of the destination post (inner cables, inner loops) */
+      const xa = p[0] + ox * 0.5, xs = side + ox * 0.5, zf = (dev.z1 != null ? dev.z1 : 0) - 70 + ox * 0.8;
       return { post: post, y: grommet, legs: [
-        ['Route the cable from the rear SSC port upward to the top and pass it over the top to the fixing point.', 'TN0160',
-          [p, [p[0], p[1], zb], [p[0], top, zb], [side + ox * 0.5, top, zb]]],
+        ['Route the cable from the rear SSC port straight up to the top of the SSC.', 'TN0160',
+          [p, [p[0], p[1], zb], [p[0], top, zb]]],
+        ['Loop it over the top of the SSC: forward along the top to the front edge, across the front, and back to the rear on the ' + lw + ' side. Fix it to the clips on the top brackets.', 'TN0160',
+          [[p[0], top, zb], [xa, top, zb], [xa, top, zf], [xs, top, zf], [xs, top, zb]]],
         ['Route it back down along the fixing bracket on the ' + lw + ' side of the SSC, through the round cable-protection grommet, and tie it to the bracket.', 'TN0160',
           [[side + ox * 0.5, top, zb], [side + ox * 0.5, grommet, zb]]],
         [Lw + ' side: fix the cable to the ' + lw + '-side cable clamp. Keep it smooth: not sharply bent, pulled tight or touching other parts.', 'TN0160',
@@ -421,7 +426,7 @@ function guideRoute(rack, cable, lane) {
   /* destination end: same rules, walked towards the port */
   const dest = cable.to.dev;
   reverse(b).forEach(([r, t, pts], i, all) => leg('At ' + dest + ': ' + (i === all.length - 1 && /^Route the cable from the rear SSC port/.test(r)
-    ? 'come up the side, pass over the top of the SSC and down into its rear port.' : r.charAt(0).toLowerCase() + r.slice(1)), t, pts));
+    ? 'come down from the top of the SSC into its rear port.' : r.charAt(0).toLowerCase() + r.slice(1)), t, pts));
   return legs;
 }
 

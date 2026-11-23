@@ -78,7 +78,14 @@ ok('device-to-device routes end at the to-port', cables.filter(c => !c.to.ext).e
   const r = routes.get(c.id), p = D.guidePortPos(rack, c.to), q = r[r.length - 1].pts.slice(-1)[0]; return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 1;
 }));
 const G = D.GUIDE_GEOM;
-ok('rear routes stay behind the rear faces (except in the end bay at the signal panel)', cables.filter(c => !c.front).every(c => routes.get(c.id).every(l => l.customer || l.pts.every(p => p[0] < 85 || p[2] <= G.zFace - G.portOut + 0.5))));
+ok('rear routes stay behind the rear faces (except in the end bay at the signal panel and the TN0160 loop over the SSC top)', cables.filter(c => !c.front).every(c => routes.get(c.id).every(l => l.customer || /over the top of the SSC/.test(l.rule) || l.pts.every(p => p[0] < 85 || p[2] <= G.zFace - G.portOut + 0.5))));
+ok('SSC exits loop over the top of the SSC (TN0160 Fig. 1/2): up at the rear, forward to the front edge, across, back to the rear', cables.filter(c => !c.front && /^SSC/.test(c.to.dev || '')).every(c => {
+  const r = routes.get(c.id), loop = r.find(l => /over the top of the SSC/.test(l.rule));
+  if (!loop) return false;
+  const s = rack.parts.find(p => p.id === c.to.dev), P = loop.pts, zs = P.map(p => p[2]);
+  const z0 = s.z0 != null ? s.z0 : G.zFace, z1 = s.z1 != null ? s.z1 : 0;
+  return P.every(p => p[1] >= s.y1 - 1) && Math.max(...zs) > z0 + 0.6 * (z1 - z0) && Math.abs(P[0][2] - P[P.length - 1][2]) < 1;
+}));
 ok('MSM cables start with the service loop over the MSM (TN0163)', cables.filter(c => c.from.dev === 'MSM1').every(c => {
   const r = routes.get(c.id); return /Service loop/.test(r[1].rule) && r[1].pts.some(p => p[1] > msm.y1);
 }));
