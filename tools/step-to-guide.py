@@ -54,6 +54,7 @@ HULL = False             # --hull: convex hull for parts still > 3x FACE_CAP aft
 # --axes: STEP axis that becomes guide x, y, z ('-n' = that axis negated, keeps a proper rotation), e.g.
 #   'yzx' for STEPs with x = depth (rear at low x), y = along the rack, z = up;
 #   '-zyx' for STEPs with y = up, z = along the rack, x = depth.
+# --keep module,ssc: layers kept at full detail. --front-ports module: measure the raised sockets on each part's front face.
 # After rotating, the model is shifted so x, y start at 0 and z = 0 at the module front faces.
 AXES = {'xyz': [0, 1, 2], 'yzx': [1, 2, 0], '-zyx': [-3, 1, 0]}   # -n-1 = that axis negated
 
@@ -76,7 +77,7 @@ def main():
     global DROP, LAYERS, FACE_CAP
     args = sys.argv[1:]
     opt = {}
-    for k in ('--profile', '--axes', '--face-cap'):
+    for k in ('--profile', '--axes', '--face-cap', '--keep', '--front-ports'):
         if k in args:
             i = args.index(k); opt[k] = args[i + 1]; del args[i:i + 2]
     if opt.get('--profile'):
@@ -85,6 +86,8 @@ def main():
         DROP = re.compile(DROP.pattern + ('|' + prof['drop'] if prof.get('drop') else ''), re.I)
         LAYERS = [tuple(x) for x in prof['layers']]
     axes = AXES[opt.get('--axes', 'xyz')]
+    keep = set(filter(None, opt.get('--keep', '').split(',')))          # layers shown at full detail (no decimation)
+    fports = set(filter(None, opt.get('--front-ports', '').split(',')))  # layers whose front sockets are measured
     FACE_CAP = int(opt.get('--face-cap', FACE_CAP))
     global HULL
     HULL = '--hull' in args
@@ -130,10 +133,40 @@ def main():
         lo, hi = m.bounds * 1000.0
         return [round(float(v), 1) for v in (*lo, *hi)]
 
+    def front_ports(m, depth=25.0, border=15.0, cell=10.0):
+        # Raised features on the part's front face (max z): connected 10 mm cells of vertices within
+        # `depth` of the front, away from the outer border. Returns blob centres [x, y, front z] in mm.
+        v = m.vertices * 1000.0
+        lo, hi = v.min(0), v.max(0)
+        f = v[(v[:, 2] > hi[2] - depth) & (v[:, 0] > lo[0] + border) & (v[:, 0] < hi[0] - border) & (v[:, 1] > lo[1] + border) & (v[:, 1] < hi[1] - border)]
+        cells = {}
+        for p in f:
+            cells.setdefault((int(p[0] // cell), int(p[1] // cell)), []).append(p)
+        seen, blobs = set(), []
+        for c in cells:
+            if c in seen:
+                continue
+            stack, pts = [c], []
+            seen.add(c)
+            while stack:
+                a = stack.pop(); pts += cells[a]
+                for d in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)):
+                    n = (a[0] + d[0], a[1] + d[1])
+                    if n in cells and n not in seen:
+                        seen.add(n); stack.append(n)
+            q = np.array(pts)
+            w = q.max(0) - q.min(0)
+            if len(q) >= 12 and 12 <= w[0] <= 60 and 12 <= w[1] <= 60:      # socket-sized
+                blobs.append([round(float(x), 1) for x in ((q[:, 0].min() + q[:, 0].max()) / 2, (q[:, 1].min() + q[:, 1].max()) / 2, hi[2])])
+        return sorted(blobs, key=lambda b: (b[0], b[1]))
+
     found = []
     for g, layer, m in items:
         b = bb(m)
-        found.append({'name': base_name(g), 'layer': layer, 'box': b})
+        it = {'name': base_name(g), 'layer': layer, 'box': b}
+        if layer in fports:
+            it['front'] = front_ports(m)
+        found.append(it)
     with open(os.path.join(out_dir, name + '.parts.json'), 'w', encoding='utf-8') as f:
         json.dump({
             'format': 'wireflow-step-parts', 'version': 1, 'source': os.path.basename(src), 'units': 'mm',
@@ -150,7 +183,7 @@ def main():
         if DROP.search(g):
             continue
         faces_in += len(m.faces)
-        if len(m.faces) > FACE_CAP and fast_simplification is not None:
+        if len(m.faces) > FACE_CAP and fast_simplification is not None and layer not in keep:
             try:
                 v, f = fast_simplification.simplify(m.vertices.astype(np.float32), m.faces.astype(np.int32),
                                                     target_reduction=1.0 - FACE_CAP / len(m.faces))
@@ -158,7 +191,7 @@ def main():
                     m = trimesh.Trimesh(v, f, process=False)
             except Exception as e:  # keep the full mesh
                 print('  decimation skipped for', g, e)
-        if HULL and len(m.faces) > 3 * FACE_CAP and layer not in ('module', 'duct'):
+        if HULL and len(m.faces) > 3 * FACE_CAP and layer not in ('module', 'duct') and layer not in keep:
             try:   # small detailed parts (connectors, fasteners) that decimation cannot reduce further
                 h = m.convex_hull
                 if len(h.faces) < len(m.faces):

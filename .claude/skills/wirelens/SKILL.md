@@ -126,3 +126,7 @@ DXF fallback (front view only): `node tools/make-guide-rack.js <dxf> <id> --scal
   overriding the technote figure). Cable categories `hvil` and `valve`.
 - `geom.sideView: 'rear'`: route texts name left/right as seen from the rear (geometry stays in the front-view frame).
   Per-holder `side` / `riserX` for racks with panels on both sides; `geom.directPanel` runs along the post straight to the panel.
+
+## Other agents
+`AGENTS.md` (root) is the shared guide for Cursor/Grok, ChatGPT/Codex and Gemini; `skills/wirelens/SKILL.md` is a copy of this file.
+Keep both in sync after editing (`Copy-Item .claude/skills/wirelens/SKILL.md skills/wirelens/SKILL.md`).

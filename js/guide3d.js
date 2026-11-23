@@ -73,8 +73,9 @@ const simple = new THREE.Group(); scene.add(simple);
 const cad = new THREE.Group(); cad.visible = false; scene.add(cad);
 const box = (w, h, d, mat, x, y, z, parent) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); (parent || simple).add(m); return m; };
 
-/* Loads rack.model ({url, matrix: 16 numbers, column-major, model units -> guide metres}). */
+/* Loads rack.model, or every entry of rack.models ({url, matrix: 16 numbers, column-major, model units -> guide metres}). */
 function loadCad(rack) {
+  if (rack.models) return Promise.all(rack.models.map(m => loadCad({ model: m }))).then(r => r.every(Boolean));
   if (!rack.model) return Promise.resolve(false);
   const btn = document.getElementById('cadBtn');
   btn.hidden = false; btn.disabled = true; btn.textContent = 'CAD model: loading…';
@@ -135,15 +136,15 @@ function buildRack(rack) {
       }
     }
   }
-  /* posts, front and rear */
-  const posts = guidePosts(rack), H = rack.height;
+  /* posts, front and rear (not for a composite of several racks: their CAD models show the frames) */
+  const posts = rack.composite ? [] : guidePosts(rack), H = rack.height;
   for (const x of posts) for (const z of [8, -G.rackDepth]) box(0.03, H * MM, 0.03, MAT.frame, x * MM, H / 2 * MM, z * MM);
   /* horizontal fixing brackets at every row rail (rear) */
-  for (const y of guideRails(rack)) box(rack.width * MM, 0.012, 0.035, MAT.bracket, rack.width / 2 * MM, (y - 14) * MM, G.zBracket * MM);
+  if (!rack.composite) for (const y of guideRails(rack)) box(rack.width * MM, 0.012, 0.035, MAT.bracket, rack.width / 2 * MM, (y - 14) * MM, G.zBracket * MM);
   /* vertical cable clamps on the rear posts */
   for (const x of posts) for (const y of guideRails(rack)) box(0.04, 0.03, 0.02, MAT.bracket, x * MM, (y + 90) * MM, (G.zClamp - 22) * MM);
   /* bottom panel (rear) */
-  box(rack.width * MM, 0.008, 0.11, MAT.bracket, rack.width / 2 * MM, (G.bottomY - 10) * MM, (G.zClamp + 10) * MM);
+  if (!rack.composite) box(rack.width * MM, 0.008, 0.11, MAT.bracket, rack.width / 2 * MM, (G.bottomY - 10) * MM, (G.zClamp + 10) * MM);
   /* Signal Inter-Connection Panel(s) on the panel end: measured (3D racks) or
      the two plates of the DXF rack. The plate is drawn in `simple` (the CAD
      model has its own); an invisible copy stays pickable in both views. */
@@ -159,10 +160,12 @@ function buildRack(rack) {
     const o = new CSS2DObject(t); o.position.set((x + SIDE * 40) * MM, (y1 + 25) * MM, pc * MM); scene.add(o);
   }
   /* vertical bracket beside the panel */
-  box(0.02, 1.85, 0.02, MAT.bracket, G.panelRiserX * MM, 0.93, (G.zClamp - 25) * MM);
+  if (!rack.composite) box(0.02, 1.85, 0.02, MAT.bracket, G.panelRiserX * MM, 0.93, (G.zClamp - 25) * MM);
   for (const h of rack.holders || []) box(0.035, 0.024, 0.052, MAT.holder, h.x * MM, h.y * MM, h.z * MM);
   /* front linework from the DXF */
   simple.add(frontLines(rack));
+  /* module names on their front faces (racks whose modules carry drawing names, e.g. S1-M1) */
+  if (rack.labelModules) for (const p of rack.parts) if (p.kind === 'module') moduleFace(p);
   /* rear port panels */
   for (const p of rack.parts) if (GUIDE_REAR_PORTS[p.kind]) rearPanel(p);
   /* front DC sockets (SSC strip and junction boxes) */
@@ -173,9 +176,23 @@ function buildRack(rack) {
   /* measured front plugs (3D racks) */
   /* measured rear sockets of parts without a technote panel figure (e.g. junction boxes): printed names in p.portLabels */
   for (const p of rack.parts) if (!GUIDE_REAR_PORTS[p.kind] && p.ports && p.portLabels) for (const id of Object.keys(p.portLabels))
-    addPort(p, { id: id, label: p.portLabels[id], conn: 'other' }, p.ports[id], false);
+    addPort(p, { id: id, label: p.portLabels[id], conn: p.portConn || 'other' }, p.ports[id], !!p.portFront);
   for (const p of rack.parts) if (p.ports && p.labels) for (const id of Object.keys(p.labels))
     addPort(p, { id: id, label: id + ' · ' + p.labels[id], conn: 'DC' }, p.ports[id], true);
+}
+
+function moduleFace(p) {
+  const wmm = p.x1 - p.x0 - 12, hmm = p.y1 - p.y0 - 8, W = 512, H = Math.max(64, Math.round(W * hmm / wmm));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#9aa3b2'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#3a4659'; g.lineWidth = 4; g.strokeRect(2, 2, W - 4, H - 4);
+  g.fillStyle = '#1b2433'; g.font = `700 ${Math.round(H * 0.42)}px Inter, Segoe UI, sans-serif`; g.textAlign = 'left'; g.textBaseline = 'middle';
+  g.fillText(p.id, W * 0.05, H / 2);
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4; tex.colorSpace = THREE.SRGBColorSpace;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(wmm * MM, hmm * MM), new THREE.MeshBasicMaterial({ map: tex }));
+  plane.position.set((p.x0 + p.x1) / 2 * MM, (p.y0 + p.y1) / 2 * MM, ((p.z1 != null ? p.z1 : 0) + 1) * MM);
+  simple.add(plane);
 }
 
 function frontLines(rack) {
@@ -232,7 +249,8 @@ function addPort(part, t, pos, front) {
   const geo = round ? new THREE.CylinderGeometry(0.011, 0.011, 0.02, 20) : new THREE.BoxGeometry(0.018, 0.018, 0.02);
   if (round) geo.rotateX(Math.PI / 2);
   const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: front ? 0xc2410c : 0x1f2937, roughness: 0.5, metalness: 0.3 }));
-  m.position.copy(v3(pos)).add(new THREE.Vector3(0, 0, front ? -0.005 : 0.01));
+  /* front sockets flush with a face (module terminals) sit just proud of it, others just inside the plug */
+  m.position.copy(v3(pos)).add(new THREE.Vector3(0, 0, front ? (pos[2] <= 2 ? 0.006 : -0.005) : 0.01));
   m.userData = { type: 'port', dev: part.id, kind: part.kind, port: t.id, label: t.label, conn: t.conn };
   scene.add(m); portMeshes.push(m); pickables.push(m);
 }
@@ -281,8 +299,12 @@ function buildCables() {
         const tag = document.createElement('div'); tag.className = 'lbl panel'; tag.textContent = c.to.ext;
         const o = new CSS2DObject(tag); o.position.copy(v3(leg.pts[leg.pts.length - 1])); o.visible = false; grp.add(o); grp.userData.tag = o;
       } else grp.add(tube(curve, radius, mat));
+      if (leg.tag && !leg.customer) {  /* e.g. the harness number, shown while the cable is selected */
+        const tag = document.createElement('div'); tag.className = 'lbl panel'; tag.textContent = leg.tag;
+        const o = new CSS2DObject(tag); o.position.copy(curve.getPointAt(0.5)); o.visible = false; grp.add(o); grp.userData.tag = o;
+      }
       if (leg.holder) {             /* inline connector in its holder */
-        const end = v3(leg.pts[leg.pts.length - 1]);
+        const end = v3(leg.holderAt === 'start' ? leg.pts[0] : leg.pts[leg.pts.length - 1]);
         const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.075, 16), MAT.conn); conn.rotation.z = Math.PI / 2; conn.position.copy(end).add(new THREE.Vector3((leg.side || SIDE) * 0.03, 0, 0)); grp.add(conn);
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.002, 6, 20), new THREE.MeshBasicMaterial({ color: leg.extra ? 0xf59e0b : 0x22c55e })); ring.rotation.y = Math.PI / 2; ring.position.copy(conn.position); grp.add(ring);
         if (!state.rack.holders) box(0.02, 0.03, 0.03, MAT.holder, end.x - 0.012, end.y - 0.022, end.z);
@@ -335,20 +357,29 @@ function selectCable(id, opts) {
 function setStep(i) {
   if (!state.sel) return;
   const legs = state.routes.get(state.sel.id);
-  state.step = Math.max(0, Math.min(legs.length - 1, i)); sparkT = 0;
+  state.step = Math.max(0, Math.min(legs.length - 1, i)); sparkT = 0; sparkHold = 0;
   applyHighlight(); renderCard(); focusLeg(state.step);
 }
-let playTimer = null;
+/* Route player: the spark runs along each piece of cable ONCE, at the chosen speed;
+   while playing, the next step starts when the spark reaches the end of the piece. */
+const SPEEDS = { slow: 0.22, normal: 0.45, fast: 0.9 };   /* metres of cable per second */
+let speed = 'normal';
+try { const v = localStorage.getItem('wirelens.speed'); if (SPEEDS[v]) speed = v; } catch (e) { /* no storage */ }
+function setSpeed(v) {
+  speed = v; try { localStorage.setItem('wirelens.speed', v); } catch (e) { /* no storage */ }
+  document.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('on', b.dataset.speed === v));
+}
+let sparkHold = 0;      /* seconds the spark rests at the end before the next step */
 function play(on) {
-  state.playing = on; clearTimeout(playTimer);
+  state.playing = on;
+  if (on) sparkHold = 0;
   renderCard();
-  if (!on || !state.sel) return;
-  const tick = () => {
-    const legs = state.routes.get(state.sel.id);
-    if (state.step >= legs.length - 1) { state.playing = false; renderCard(); return; }
-    setStep(state.step + 1); playTimer = setTimeout(tick, 2600);
-  };
-  playTimer = setTimeout(tick, 2600);
+}
+function sparkDone() {  /* spark reached the end of the current piece */
+  if (!state.playing || !state.sel) return;
+  const legs = state.routes.get(state.sel.id);
+  if (state.step >= legs.length - 1) { state.playing = false; renderCard(); return; }
+  setStep(state.step + 1);
 }
 
 /* camera tween */
@@ -403,11 +434,29 @@ function renderList() {
   const groups = {};
   items.forEach(c => (groups[groupKey(c)] = groups[groupKey(c)] || []).push(c));
   const keys = Object.keys(groups).sort();
-  $('list').innerHTML = keys.length ? keys.map(k => `<div class="group"><h3>${esc(k.slice(2).trim())}</h3>` + groups[k].map(c =>
-    `<button class="item${state.sel && state.sel.id === c.id ? ' sel' : ''}" data-id="${c.id}"><i style="background:${GUIDE_CATS[c.cat].color}"></i><span>${esc(c.title)}<small>${esc(c.part)}</small></span></button>`).join('') + '</div>').join('')
+  /* each group is a dropdown: closed unless opened, searched, or holding the selected cable */
+  const isOpen = k => !!q || openGroups.has(k) || (state.sel && groups[k].some(c => c.id === state.sel.id));
+  $('list').innerHTML = keys.length ? keys.map(k => `<details class="group" data-k="${esc(k)}"${isOpen(k) ? ' open' : ''}><summary>${esc(k.slice(2).trim())}<span class="n">${groups[k].length}</span></summary>` + groups[k].map(c =>
+    `<button class="item${state.sel && state.sel.id === c.id ? ' sel' : ''}" data-id="${c.id}"><i style="background:${GUIDE_CATS[c.cat].color}"></i><span>${esc(c.title)}<small>${esc(c.part)}</small></span></button>`).join('') + '</details>').join('')
     : '<p style="color:var(--muted);padding:10px">No cable matches.</p>';
   $('list').querySelectorAll('.item').forEach(b => b.onclick = () => selectCable(b.dataset.id));
+  $('list').querySelectorAll('details.group').forEach(d => d.ontoggle = () => { if (q) return; d.open ? openGroups.add(d.dataset.k) : openGroups.delete(d.dataset.k); });
 }
+const openGroups = new Set();
+/* drag the right edge of the cable list to resize it (remembered per browser) */
+(function sideResizer() {
+  const r = $('resizer'), app = document.querySelector('.app'); if (!r || !app) return;
+  const set = w => { w = Math.max(240, Math.min(Math.round(w), Math.round(innerWidth * 0.6))); app.style.setProperty('--side', w + 'px'); return w; };
+  try { const w = +localStorage.getItem('wirelens.side'); if (w) set(w); } catch (e) { /* no storage */ }
+  r.addEventListener('pointerdown', e => {
+    e.preventDefault(); r.setPointerCapture(e.pointerId); r.classList.add('on');
+    const move = ev => { set(ev.clientX); resize(); };
+    const up = ev => { r.classList.remove('on'); r.removeEventListener('pointermove', move); r.removeEventListener('pointerup', up);
+      try { localStorage.setItem('wirelens.side', String(set(ev.clientX))); } catch (e2) { /* no storage */ } resize(); };
+    r.addEventListener('pointermove', move); r.addEventListener('pointerup', up);
+  });
+  r.addEventListener('keydown', e => { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; const cur = parseInt(getComputedStyle(app).getPropertyValue('--side')) || 340; set(cur + (e.key === 'ArrowRight' ? 20 : -20)); resize(); });
+})();
 function endName(e) {
   if (e.ext) return e.ext;
   return e.dev + ' · ' + (portLabel(e.dev, e.port) || e.port);
@@ -442,6 +491,7 @@ function renderCard() {
       <button class="btn" id="prev" aria-label="Previous step">◀</button>
       <button class="btn${state.playing ? ' on' : ''}" id="playBtn">${state.playing ? 'Pause' : (state.step >= legs.length - 1 ? 'Replay' : 'Play route')}</button>
       <button class="btn" id="next" aria-label="Next step">▶</button>
+      <span class="speed" role="group" aria-label="Speed">${Object.keys(SPEEDS).map(k => `<button class="btn sp${k === speed ? ' on' : ''}" data-speed="${k}" aria-pressed="${k === speed}">${k === 'slow' ? 'Slow' : k === 'fast' ? 'Fast' : 'Normal'}</button>`).join('')}</span>
       <span class="grow"></span>
       <span style="color:var(--muted);font-size:12px">Step ${state.step + 1} of ${legs.length}</span>
       <button class="btn" id="close" aria-label="Close">✕</button>
@@ -449,8 +499,9 @@ function renderCard() {
     <ol class="steps">${legs.map((l, i) => `<li data-i="${i}" class="${i === state.step ? 'cur' : i < state.step ? 'done' : ''}${l.customer ? ' cust' : ''}">${esc(l.rule)}<span class="tn">${esc(l.tn)}</span></li>`).join('')}</ol>`;
   $('prev').onclick = () => { play(false); setStep(state.step - 1); };
   $('next').onclick = () => { play(false); setStep(state.step + 1); };
-  $('playBtn').onclick = () => { if (state.playing) play(false); else { if (state.step >= legs.length - 1) setStep(0); play(true); } };
+  $('playBtn').onclick = () => { if (state.playing) play(false); else { if (state.step >= legs.length - 1) setStep(0); else if (sparkT >= 1) sparkT = 0; play(true); } };
   $('close').onclick = () => { play(false); selectCable(null); };
+  card.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { setSpeed(b.dataset.speed); b.parentNode.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   card.querySelectorAll('.steps li').forEach(li => li.onclick = () => { play(false); setStep(+li.dataset.i); });
   const cur = card.querySelector('.steps li.cur'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
   if (wasHidden) resize();
@@ -536,8 +587,10 @@ function loop() {
   if (state.sel) {
     const e = cableMeshes.get(state.sel.id)[state.step];
     if (e) {
-      sparkT = reduceMotion ? 1 : (sparkT + dt / Math.max(0.6, e.curve.getLength() * 1.4)) % 1;
-      spark.position.copy(e.curve.getPointAt(sparkT)); spark.visible = true;
+      /* once per step: wait for the camera, run to the end, rest briefly, then (if playing) next step */
+      if (sparkT < 1) { if (!tween) sparkT = reduceMotion ? 1 : Math.min(1, sparkT + dt * SPEEDS[speed] / Math.max(0.05, e.curve.getLength())); }
+      else if ((sparkHold += dt) > (reduceMotion ? 1.5 : 0.5)) { sparkHold = 0; sparkDone(); }
+      spark.position.copy(e.curve.getPointAt(Math.min(1, sparkT))); spark.visible = true;
       e.mat.emissiveIntensity = 0.55 + 0.45 * Math.sin(performance.now() / 180);
     }
   } else spark.visible = false;

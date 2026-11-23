@@ -287,6 +287,8 @@ function guideNearest(list, v) { return list.reduce((b, x) => (Math.abs(x - v) <
  * @return {Array<{rule:string, tn:string, pts:Array<[number,number,number]>, customer?:boolean}>}
  */
 function guideRoute(rack, cable, lane) {
+  /* routes precomputed by a builder (e.g. two racks joined into one bank view) */
+  if (cable.legs) return cable.legs.map(l => Object.assign({}, l, { pts: l.pts.map(p => p.slice()) }));
   const G = guideGeom(rack), side = G.panelSide || -1, posts = guidePosts(rack), rails = guideRails(rack);
   const l = lane || 0, ox = ((l % 5) - 2) * 9, oy = ((l % 5) - 2) * 9, oz = -(Math.floor(l / 5) % 4) * 8;
   const legs = [];

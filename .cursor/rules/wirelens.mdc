@@ -1,0 +1,7 @@
+---
+description: Wirelens project rules (3D wiring guide for AYK battery racks)
+alwaysApply: true
+---
+Read `AGENTS.md` in the repo root and follow it. Full knowledge: `skills/wirelens/SKILL.md`.
+If `projects/*/AGENTS.md` exists locally, read it for the confidential project (never commit anything from `projects/`).
+Key rules: printed port names character for character; the GitHub repo is public; commit only when asked; keep `node tests/guide.test.js` green.

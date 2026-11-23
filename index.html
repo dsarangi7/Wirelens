@@ -15,7 +15,7 @@
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--text); font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
 button, input { font: inherit; color: inherit; }
-.app { display: grid; grid-template-columns: 340px 1fr; grid-template-rows: 56px 1fr; height: 100vh; }
+.app { display: grid; grid-template-columns: var(--side, 340px) 1fr; grid-template-rows: 56px 1fr; height: 100vh; }
 header { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--line); background: rgba(8,13,29,.92); }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 16px; color: var(--text); text-decoration: none; }
 .brand img { width: 26px; height: 26px; border-radius: 6px; background: #fff; padding: 2px; }
@@ -26,7 +26,9 @@ header h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--muted); w
 .rack-sel { background: var(--card); max-width: 260px; }
 .btn.on { background: var(--blue2); border-color: var(--blue2); color: #fff; }
 .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-aside { border-right: 1px solid var(--line); background: var(--bg2); display: flex; flex-direction: column; min-height: 0; }
+aside { border-right: 1px solid var(--line); background: var(--bg2); display: flex; flex-direction: column; min-height: 0; position: relative; }
+.resizer { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 5; touch-action: none; }
+.resizer:hover, .resizer.on { background: rgba(0,140,255,.35); }
 .side-top { padding: 12px 14px 8px; border-bottom: 1px solid var(--line); }
 .search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
@@ -34,6 +36,13 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
 .chip i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .chip[aria-pressed="false"] { opacity: .45; }
 .list { overflow: auto; flex: 1; padding: 6px 8px 12px; }
+.group { border-bottom: 1px solid var(--line); }
+.group summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 9px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; user-select: none; }
+.group summary::-webkit-details-marker { display: none; }
+.group summary::before { content: '▸'; font-size: 11px; transition: transform .15s; }
+.group[open] summary::before { transform: rotate(90deg); }
+.group summary .n { margin-left: auto; background: rgba(154,171,198,.14); border-radius: 999px; padding: 1px 8px; letter-spacing: 0; }
+.group summary:hover { color: var(--fg, #e6edf7); }
 .group h3 { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 12px 6px 4px; font-weight: 700; }
 .item { display: flex; gap: 9px; align-items: flex-start; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; cursor: pointer; font-size: 13px; }
 .item:hover { background: rgba(154,171,198,.08); }
@@ -63,6 +72,8 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
 .steps li.cust::before { background: #a855f7; }
 .player { display: flex; gap: 6px; margin: 10px 0 2px; align-items: center; }
 .player .grow { flex: 1; }
+.player .speed { display: inline-flex; gap: 2px; margin-left: 4px; }
+.player .speed .btn { padding: 4px 7px; font-size: 12px; }
 .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
 .card, .legend, .about, .about-box { z-index: 4; }
 .tip { z-index: 5; }
@@ -109,6 +120,7 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
     </div>
   </header>
   <aside aria-label="Cables">
+    <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Drag to resize the cable list" tabindex="0"></div>
     <div class="side-top">
       <input class="search" id="search" type="search" placeholder="Find a cable or port (e.g. SSC3, EMS)" aria-label="Find a cable or port">
       <div class="chips" id="chips"></div>
