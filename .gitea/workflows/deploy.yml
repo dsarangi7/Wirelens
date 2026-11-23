@@ -1,0 +1,32 @@
+# Deploys Wirelens to the company Windows/IIS server on every push to main.
+# Runner: Gitea act_runner installed ON the web server (host mode), label "windows",
+# with Node.js installed. Optional repo variable DEPLOY_PATH (default below).
+# Site URL: http://<server>/wirelens/
+name: Test and deploy Wirelens
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: windows
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || 'C:\inetpub\wwwroot\wirelens' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        shell: powershell
+        run: node tests/guide.test.js; if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Copy the site (page, scripts, assets, IIS config only)
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force $env:DEPLOY_PATH | Out-Null
+          Copy-Item index.html, web.config $env:DEPLOY_PATH -Force
+          robocopy js     "$env:DEPLOY_PATH\js"     /MIR /NFL /NDL /NJH /NP
+          if ($LASTEXITCODE -ge 8) { exit 1 }
+          robocopy assets "$env:DEPLOY_PATH\assets" /MIR /NFL /NDL /NJH /NP
+          if ($LASTEXITCODE -ge 8) { exit 1 }
+          Write-Output "Deployed to $env:DEPLOY_PATH"
+          exit 0
