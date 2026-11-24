@@ -622,17 +622,23 @@ function loop() {
 }
 
 /* rack list, home dashboard and rail: js/racks.js (assets/guide/racks.json + projects/racks.local.json) */
-const { rackList, renderHome, renderRail } = window.WirelensRacks;
+/* loaded lazily: a cached older index.html may lack the racks.js script tag */
+async function racksApi() {
+  if (!window.WirelensRacks) await new Promise(res => { const t = document.createElement('script'); t.src = 'js/racks.js?v=' + Date.now(); t.onload = t.onerror = res; document.head.appendChild(t); });
+  return window.WirelensRacks || { rackList: async () => [], renderHome: () => {}, renderRail: () => {} };
+}
 let TECHNOTES = GUIDE_TECHNOTES;
 
 /* ---------------- start ---------------- */
 (async function start() {
+  const { rackList, renderHome, renderRail } = await racksApi();
+  if (!RACK && !$('homeMain')) { location.search = '?rack=s10195-r1'; return; }   /* stale page without the home section */
   if (!RACK) {   /* home dashboard: every rack, grouped by project */
     document.body.classList.add('home'); document.title = 'Wirelens · Rack wiring guides';
     renderHome($('homeMain'), await rackList());
     return;
   }
-  rackList().then(list => renderRail($('rail'), list, RACK, resize));
+  if ($('rail')) rackList().then(list => renderRail($('rail'), list, RACK, resize));
   try {
     const entry = (await rackList()).find(x => x.id === RACK);
     const res = await fetch(entry && entry.url ? entry.url : 'assets/guide/' + encodeURIComponent(RACK) + '.json');
