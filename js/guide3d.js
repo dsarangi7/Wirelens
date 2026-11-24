@@ -8,7 +8,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const MM = 0.001;
-const RACK = new URLSearchParams(location.search).get('rack') || 's10195-r1';
+const RACK = new URLSearchParams(location.search).get('rack');   /* none: home dashboard (js/racks.js) */
 let G = GUIDE_GEOM, SIDE = -1;     /* rack geometry and panel end (-1 left, +1 right, seen from the front) */
 const $ = id => document.getElementById(id);
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -132,7 +132,7 @@ function buildRack(rack) {
       for (const side of [1, -1]) {
         const o = new CSS2DObject(tag.cloneNode(true));
         o.position.set((p.x0 + p.x1) / 2 * MM, (p.y1 + 10) * MM, side > 0 ? 0.03 : ((p.z0 != null ? p.z0 : -depth) - 30) * MM);
-        o.userData.side = side; scene.add(o); sideLabels.push(o);
+        o.userData.side = side; o.userData.normal = new THREE.Vector3(0, 0, side > 0 ? 1 : -1); scene.add(o); sideLabels.push(o);
       }
     }
   }
@@ -149,7 +149,7 @@ function buildRack(rack) {
      the two plates of the DXF rack. The plate is drawn in `simple` (the CAD
      model has its own); an invisible copy stays pickable in both views. */
   const panels = rack.panels || GUIDE_PANELS.map(p => Object.assign({ x: G.panelX, z0: GUIDE_PANEL_Z.z0, z1: GUIDE_PANEL_Z.z1 }, p));
-  for (const { x, y0, y1, z0, z1, label } of panels) {
+  for (const { x, y0, y1, z0, z1, label, side } of panels) {   /* side: which way the panel faces (racks with panels on both ends) */
     const pw = Math.abs(z1 - z0), pc = (z0 + z1) / 2, geo = new THREE.PlaneGeometry(pw * MM, (y1 - y0) * MM);
     const place = m => { m.rotation.y = Math.PI / 2; m.position.set(x * MM, (y0 + y1) / 2 * MM, pc * MM); return m; };
     simple.add(place(new THREE.Mesh(geo, MAT.panel)));
@@ -157,7 +157,8 @@ function buildRack(rack) {
     pick.userData = { type: 'panel', label: label };
     scene.add(pick); pickables.push(pick);
     const t = document.createElement('div'); t.className = 'lbl panel'; t.textContent = label.replace('Signal Inter-Connection Panel', 'Signal panel');
-    const o = new CSS2DObject(t); o.position.set((x + SIDE * 40) * MM, (y1 + 25) * MM, pc * MM); scene.add(o);
+    const o = new CSS2DObject(t); o.position.set((x + (side || SIDE) * 60) * MM, (y1 + 25) * MM, pc * MM); scene.add(o);
+    o.userData.normal = new THREE.Vector3(side || SIDE, 0, 0); sideLabels.push(o);   /* shown only from the side it faces */
   }
   /* vertical bracket beside the panel */
   if (!rack.composite) box(0.02, 1.85, 0.02, MAT.bracket, G.panelRiserX * MM, 0.93, (G.zClamp - 25) * MM);
@@ -305,8 +306,9 @@ function buildCables() {
       }
       if (leg.holder) {             /* inline connector in its holder */
         const end = v3(leg.holderAt === 'start' ? leg.pts[0] : leg.pts[leg.pts.length - 1]);
-        const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.075, 16), MAT.conn); conn.rotation.z = Math.PI / 2; conn.position.copy(end).add(new THREE.Vector3((leg.side || SIDE) * 0.03, 0, 0)); grp.add(conn);
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.002, 6, 20), new THREE.MeshBasicMaterial({ color: leg.extra ? 0xf59e0b : 0x22c55e })); ring.rotation.y = Math.PI / 2; ring.position.copy(conn.position); grp.add(ring);
+        /* upright in its holder, flat on the panel (TN0160 Fig. 5): AYK cable in at the bottom, customer cable out at the top */
+        const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, GUIDE_INLINE.half * 2 * MM, 16), MAT.conn); conn.position.copy(end); grp.add(conn);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0135, 0.0022, 6, 20), new THREE.MeshBasicMaterial({ color: leg.extra ? 0xf59e0b : 0x22c55e })); ring.rotation.x = Math.PI / 2; ring.position.copy(conn.position); grp.add(ring);
         if (!state.rack.holders) box(0.02, 0.03, 0.03, MAT.holder, end.x - 0.012, end.y - 0.022, end.z);
       }
       grp.traverse(o => { if (o.isMesh && o.material === mat) { o.userData = { type: 'cable', id: c.id, leg: i }; pickables.push(o); } });
@@ -466,9 +468,10 @@ const openGroups = new Set();
   try { const w = +localStorage.getItem('wirelens.side'); if (w) set(w); } catch (e) { /* no storage */ }
   r.addEventListener('pointerdown', e => {
     e.preventDefault(); r.setPointerCapture(e.pointerId); r.classList.add('on');
-    const move = ev => { set(ev.clientX); resize(); };
+    const left = () => r.parentElement.getBoundingClientRect().left;   /* the rack rail sits left of the cable list */
+    const move = ev => { set(ev.clientX - left()); resize(); };
     const up = ev => { r.classList.remove('on'); r.removeEventListener('pointermove', move); r.removeEventListener('pointerup', up);
-      try { localStorage.setItem('wirelens.side', String(set(ev.clientX))); } catch (e2) { /* no storage */ } resize(); };
+      try { localStorage.setItem('wirelens.side', String(set(ev.clientX - left()))); } catch (e2) { /* no storage */ } resize(); };
     r.addEventListener('pointermove', move); r.addEventListener('pointerup', up);
   });
   r.addEventListener('keydown', e => { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; const cur = parseInt(getComputedStyle(app).getPropertyValue('--side')) || 340; set(cur + (e.key === 'ArrowRight' ? 20 : -20)); resize(); });
@@ -599,7 +602,12 @@ function loop() {
   }
   controls.update();
   const rearSide = camera.position.z < -0.4;
-  for (const o of sideLabels) o.visible = (o.userData.side < 0) === rearSide;
+  /* labels appear only when the camera looks at the side they face (within ~65 deg), fading in */
+  for (const o of sideLabels) {
+    const v = camera.position.clone().sub(o.position).normalize(), d = v.dot(o.userData.normal);
+    o.visible = d > 0.42;
+    if (o.visible) o.element.style.opacity = String(Math.min(1, (d - 0.42) / 0.2));
+  }
   if (state.sel) {
     const e = cableMeshes.get(state.sel.id)[state.step];
     if (e) {
@@ -613,25 +621,18 @@ function loop() {
   renderer.render(scene, camera); labels.render(scene, camera);
 }
 
-/* rack picker: assets/guide/racks.json (published) + projects/racks.local.json
-   (local only, git-ignored: confidential project racks, {id, label, url}) */
-async function rackList() {
-  const get = async u => { try { const r = await fetch(u); return r.ok ? await r.json() : []; } catch (e) { return []; } };
-  return (await get('assets/guide/racks.json')).concat(await get('projects/racks.local.json'));
-}
+/* rack list, home dashboard and rail: js/racks.js (assets/guide/racks.json + projects/racks.local.json) */
+const { rackList, renderHome, renderRail } = window.WirelensRacks;
 let TECHNOTES = GUIDE_TECHNOTES;
-async function rackPicker() {
-  const sel = $('rackSel');
-  try {
-    const list = await rackList();
-    sel.innerHTML = list.map(x => `<option value="${esc(x.id)}"${x.id === RACK ? ' selected' : ''}>${esc(x.label)}</option>`).join('');
-    sel.hidden = list.length < 2;
-    sel.onchange = () => { location.search = '?rack=' + encodeURIComponent(sel.value); };
-  } catch (e) { sel.hidden = true; }
-}
 
 /* ---------------- start ---------------- */
 (async function start() {
+  if (!RACK) {   /* home dashboard: every rack, grouped by project */
+    document.body.classList.add('home'); document.title = 'Wirelens · Rack wiring guides';
+    renderHome($('homeMain'), await rackList());
+    return;
+  }
+  rackList().then(list => renderRail($('rail'), list, RACK, resize));
   try {
     const entry = (await rackList()).find(x => x.id === RACK);
     const res = await fetch(entry && entry.url ? entry.url : 'assets/guide/' + encodeURIComponent(RACK) + '.json');
@@ -645,7 +646,6 @@ async function rackPicker() {
   G = guideGeom(r); SIDE = G.panelSide || -1;
   TECHNOTES = Object.assign({}, GUIDE_TECHNOTES, r.technotes || {});
   $('title').textContent = 'Rack ' + r.name + ' · customer wiring guide';
-  rackPicker();
   state.cables = guideCables(r);
   resize();
   buildRack(r);

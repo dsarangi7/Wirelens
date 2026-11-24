@@ -1,4 +1,4 @@
 [
-  { "id": "s10195-r1", "label": "S10195 · rack 1 (SolidWorks 3D)" },
-  { "id": "s10195", "label": "S10195 · rack 2 (front-view DXF)" }
+  {"id":"s10195-r1","label":"S10195 · rack 1 (SolidWorks 3D)","project":"S10195 (demo)","group":"Battery racks","title":"Rack 1","desc":"SolidWorks 3D model"},
+  {"id":"s10195","label":"S10195 · rack 2 (front-view DXF)","project":"S10195 (demo)","group":"Battery racks","title":"Rack 2","desc":"Front-view DXF drawing"}
 ]

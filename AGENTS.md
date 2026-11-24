@@ -36,13 +36,15 @@ The page must be served over http (it fetches JSON and GLB). After a change, har
 ## Layout
 ```
 index.html, js/guide-data.js, js/guide3d.js, js/cad.js   the app
+js/racks.js              rack navigation: home dashboard (no ?rack=) + collapsible rack rail in the viewer
 assets/guide/            published racks: <id>.json, <id>.glb, racks.json (picker list)
 tools/step-to-guide.py   SolidWorks STEP -> <id>.glb + <id>.parts.json (cascadio, trimesh, fast-simplification, scipy)
 tools/make-guide-rack.js rack JSON from a DXF, or from parts.json with --step (S10195 family)
 tests/guide.test.js      engine tests
 skills/wirelens/         agent skill files (copy of .claude/skills/wirelens): read SKILL.md
 projects/                LOCAL ONLY, git-ignored: confidential projects (rules, builders, CAD, tests, notes)
-projects/racks.local.json  local picker entries {id, label, url} for confidential racks
+projects/racks.local.json  local rack entries {id, label, url, project, group, title, desc} for confidential racks
+                         (published ones in assets/guide/racks.json; project/group/title/desc drive the home page and rail)
 docs/wiring-guide-3d.md  routing rules, assumptions
 .github/workflows/pages.yml  tests + GitHub Pages deploy;  .gitea/workflows/deploy.yml  company IIS deploy
 ```

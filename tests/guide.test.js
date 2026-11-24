@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const D = new Function(fs.readFileSync(path.join(ROOT, 'js', 'guide-data.js'), 'utf8') +
-  '\nreturn { GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_REAR_PORTS, GUIDE_CATS, GUIDE_CONNECTORS, guideGeom, guidePortPos, guideCables, guideRoute, guideLanes, guidePart };')();
+  '\nreturn { GUIDE_INLINE, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_REAR_PORTS, GUIDE_CATS, GUIDE_CONNECTORS, guideGeom, guidePortPos, guideCables, guideRoute, guideLanes, guidePart };')();
 const rack = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'guide', 's10195.json'), 'utf8'));
 
 let passed = 0; const failed = [];
@@ -97,7 +97,9 @@ ok('customer routes: bottom panel, riser, holder, then customer cable (TN0160/TN
   return r[n - 1].customer && r[n - 2].holder && /bottom panel/.test(r[n - 4].rule) && /vertical bracket/.test(r[n - 3].rule)
     && r[n - 4].pts.every(p => p[1] < G.bottomY + 40);
 }));
-ok('the holder leg ends on the Signal Inter-Connection Panel', ext.every(c => { const r = routes.get(c.id), l = r[r.length - 2]; return Math.abs(l.pts[l.pts.length - 1][0] - G.panelX) < 0.5; }));
+ok('the holder leg ends on the Signal Inter-Connection Panel, rising into an upright inline connector from below (TN0160 Fig. 5)', ext.every(c => { const r = routes.get(c.id), l = r[r.length - 2], P = l.pts, e = P[P.length - 1], b = P[P.length - 2];
+  return Math.abs(Math.abs(e[0] - G.panelX) - D.GUIDE_INLINE.out) < 0.5 && Math.abs(b[0] - e[0]) < 0.5 && Math.abs(b[2] - e[2]) < 0.5 && b[1] < e[1] - 20; }));
+ok('customer cables leave the top of the inline connector', ext.every(c => { const P = routes.get(c.id).slice(-1)[0].pts; return P[1][1] > P[0][1] + 20 && Math.abs(P[1][0] - P[0][0]) < 0.5; }));
 ok('ACDP cables go to the side sheet metal first (TN0159)', cables.filter(c => c.from.dev.startsWith('ACDP')).every(c => /side sheet metal/.test(routes.get(c.id)[0].rule)));
 ok('DC routes start with the inverter lock-out (TN0162)', cables.filter(c => c.cat === 'dc').every(c => /Lock out the power from the inverter/.test(routes.get(c.id)[0].rule)));
 ok('routes are deterministic', JSON.stringify(cables.map(c => D.guideRoute(rack, c, lanes.get(c.id)))) === JSON.stringify([...routes.values()]));
@@ -150,9 +152,21 @@ ok('R1: runs behind a device stay in its own slot (below the part above)', c1.fi
 }));
 const ext1 = c1.filter(c => c.cat === 'ext');
 ok('R1: customer cables go to the measured holders on the right-end panel', G1.panelSide === 1 && ext1.filter(c => !c.holder.extra).length === r1.holders.length
-  && ext1.every(c => { const r = R1.get(c.id), l = r[r.length - 2]; return l.holder && Math.abs(l.pts[l.pts.length - 1][0] - r1.holders[0].x) < 0.5; }));
+  && ext1.every(c => { const r = R1.get(c.id), l = r[r.length - 2]; return l.holder && Math.abs(Math.abs(l.pts[l.pts.length - 1][0] - r1.holders[0].x) - D.GUIDE_INLINE.out) < 0.5; }));
 ok('R1: holders beyond the CAD ones are flagged for confirmation', ext1.filter(c => c.holder.extra).every(c => /confirm its position/.test(R1.get(c.id).slice(-2)[0].rule)));
 ok('R1: customer cables leave down the cable trunk', ext1.every(c => R1.get(c.id).slice(-1)[0].pts.some(p => Math.abs(p[0] - r1.trunk.x) < 1 && p[1] < r1.trunk.y0 + 50)));
+
+/* rack navigation (js/racks.js): home dashboard and rail grouping */
+const NAV = require(path.join(__dirname, '..', 'js', 'racks.js'));
+const pubList = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'assets', 'guide', 'racks.json'), 'utf8'));
+const navDemo = [{ id: 'a', label: 'X1 · Bank 1 · local', url: 'p/a.json' }, { id: 'b', label: 'Plain rack' },
+  { id: 'c', label: 'X1 · Type B', project: 'X1', group: 'Battery racks', title: 'Type B', desc: '7 SSC' }, { id: 'd', label: 'X2 · rack', project: 'X2' }];
+const nav = NAV.rackGroups(navDemo);
+ok('racks: grouped by project in order of first appearance', nav.map(p => p.project).join() === 'X1,Racks,X2');
+ok('racks: label without fields splits into project and title, "· local" dropped and flagged', (() => { const r = NAV.rackInfo(navDemo[0]); return r.project === 'X1' && r.title === 'Bank 1' && r.local && r.group === 'Racks'; })());
+ok('racks: explicit project / group / title win', nav[0].groups.map(g => g.name).join() === 'Racks,Battery racks' && nav[0].groups[1].racks[0].title === 'Type B');
+ok('racks: search matches title, group or description, case-insensitive', NAV.rackGroups(navDemo, 'ssc').length === 1 && NAV.rackGroups(navDemo, 'BATTERY')[0].groups[0].racks[0].id === 'c' && NAV.rackGroups(navDemo, 'zzz').length === 0);
+ok('racks: every published rack has a project, group and title, and its JSON exists', pubList.every(x => x.project && x.group && x.title && fs.existsSync(path.join(__dirname, '..', 'assets', 'guide', x.id + '.json'))));
 
 console.log('\n' + (failed.length ? 'FAILED ' + failed.length + ':\n  ' + failed.join('\n  ') : 'Guide tests passed: ' + passed));
 process.exitCode = failed.length ? 1 : 0;
