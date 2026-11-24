@@ -293,7 +293,8 @@ const GUIDE_INLINE = { half: 38, out: 16, below: 70 };   /* mm: half length, off
 /** Customer cable out of the top of an upright inline connector, then away from the panel. */
 function guideCustomerOut(hx, h, side) {
   const up = h.y + GUIDE_INLINE.half + 45;
-  return [[hx, h.y, h.z], [hx, up, h.z], [hx + side * 140, up + 30, h.z], [hx + side * 520, up - 20, h.z]];
+  /* a short stub: shows the cable leaving the top and turning away, without reaching a neighbouring rack */
+  return [[hx, h.y, h.z], [hx, up, h.z], [hx + side * 70, up + 20, h.z], [hx + side * 180, up, h.z]];
 }
 
 function guideRoute(rack, cable, lane) {
