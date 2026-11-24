@@ -271,7 +271,9 @@ function guideCables(rack) {
 
 /* ---------- channel router ---------- */
 function guidePosts(rack) {
-  const G = guideGeom(rack), n = Math.round((rack.width - G.postX0) / G.postPitch);
+  const G0 = guideGeom(rack);
+  if (Array.isArray(G0.posts) && G0.posts.length) return G0.posts.slice();   /* explicit, for unevenly spaced posts (racks in a row with gaps) */
+  const G = G0, n = Math.round((rack.width - G.postX0) / G.postPitch);
   const out = []; for (let k = 0; k <= n; k++) out.push(G.postX0 + k * G.postPitch); return out;
 }
 function guideRails(rack) {

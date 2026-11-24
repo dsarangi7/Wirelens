@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const D = new Function(fs.readFileSync(path.join(ROOT, 'js', 'guide-data.js'), 'utf8') +
-  '\nreturn { GUIDE_INLINE, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_REAR_PORTS, GUIDE_CATS, GUIDE_CONNECTORS, guideGeom, guidePortPos, guideCables, guideRoute, guideLanes, guidePart };')();
+  '\nreturn { GUIDE_INLINE, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_REAR_PORTS, GUIDE_CATS, GUIDE_CONNECTORS, guideGeom, guidePortPos, guideCables, guideRoute, guideLanes, guidePart, guidePosts };')();
 const rack = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'guide', 's10195.json'), 'utf8'));
 
 let passed = 0; const failed = [];
@@ -155,6 +155,8 @@ ok('R1: customer cables go to the measured holders on the right-end panel', G1.p
   && ext1.every(c => { const r = R1.get(c.id), l = r[r.length - 2]; return l.holder && Math.abs(Math.abs(l.pts[l.pts.length - 1][0] - r1.holders[0].x) - D.GUIDE_INLINE.out) < 0.5; }));
 ok('R1: holders beyond the CAD ones are flagged for confirmation', ext1.filter(c => c.holder.extra).every(c => /confirm its position/.test(R1.get(c.id).slice(-2)[0].rule)));
 ok('R1: customer cables leave down the cable trunk', ext1.every(c => R1.get(c.id).slice(-1)[0].pts.some(p => Math.abs(p[0] - r1.trunk.x) < 1 && p[1] < r1.trunk.y0 + 50)));
+
+ok('geom.posts: explicit post list overrides the evenly spaced pattern', (() => { const G = D.guidePosts; return G({ width: 3000, geom: { posts: [156, 684, 1712, 2240] } }).join() === '156,684,1712,2240' && G({ width: 1000, geom: { postX0: 100, postPitch: 400 } }).join() === '100,500,900'; })());
 
 /* rack navigation (js/racks.js): home dashboard and rail grouping */
 const NAV = require(path.join(__dirname, '..', 'js', 'racks.js'));
