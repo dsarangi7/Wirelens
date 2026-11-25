@@ -447,6 +447,7 @@ function renderChips() {
   });
 }
 function renderList() {
+  if (state.tab === 'harness') return renderHarness();
   const q = state.query.trim().toLowerCase();
   const items = state.cables.filter(c => shown(c) && (!q || (c.title + ' ' + c.part + ' ' + c.id + ' ' + (c.to.ext || '')).toLowerCase().includes(q)));
   const groups = {};
@@ -461,6 +462,37 @@ function renderList() {
   $('list').querySelectorAll('details.group').forEach(d => d.ontoggle = () => { if (q) return; d.open ? openGroups.add(d.dataset.k) : openGroups.delete(d.dataset.k); });
 }
 const openGroups = new Set();
+/* Harnesses tab: every in-rack cable with its harness number and 3D route length (guideHarnesses), CSV download */
+function harnessRows() {
+  if (!state.harness) state.harness = guideHarnesses(state.rack, state.cables);
+  const q = state.query.trim().toLowerCase(), byId = new Map(state.cables.map(c => [c.id, c]));
+  return state.harness.filter(h => shown(byId.get(h.id)) && (!q || (h.harness + ' ' + h.title + ' ' + h.id).toLowerCase().includes(q)))
+    .sort((a, b) => (a.harness ? 0 : 1) - (b.harness ? 0 : 1) || a.harness.localeCompare(b.harness) || a.group.localeCompare(b.group) || a.id.localeCompare(b.id));
+}
+function renderHarness() {
+  const rows = harnessRows(), total = rows.reduce((n, h) => n + h.length, 0), num = rows.filter(h => h.harness).length;
+  $('list').innerHTML = `<div class="hbar"><span>${rows.length} cables · ${num} numbered · ${(total / 1000).toFixed(1)} m</span><button class="btn" id="csvBtn">Download CSV</button></div>
+    <div class="hnote">Length = the cable’s route in this 3D guide, socket to socket or to its inline connector, rounded up to 10 mm. An estimate: no bend or service-loop allowance. Customer cables between racks are not included.</div>
+    <table class="htable"><thead><tr><th>Harness</th><th>Cable</th><th style="text-align:right">mm</th></tr></thead><tbody>` +
+    rows.map(h => `<tr data-id="${esc(h.id)}"${state.sel && state.sel.id === h.id ? ' class="sel"' : ''}><td class="h${h.harness ? '' : ' none'}">${esc(h.harness || '–')}</td><td><i style="background:${GUIDE_CATS[h.cat].color}"></i>${esc(h.title)}</td><td class="n">${h.length.toLocaleString('en-US')}</td></tr>`).join('') + '</tbody></table>';
+  $('list').querySelectorAll('tbody tr').forEach(r => r.onclick = () => selectCable(r.dataset.id));
+  $('csvBtn').onclick = () => downloadCsv(rows);
+}
+function downloadCsv(rows) {
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const lines = [['Rack', 'Harness number', 'Cable id', 'From → To', 'Category', 'Group', 'Route length (mm)'].map(q).join(',')]
+    .concat(rows.map(h => [state.rack.name, h.harness, h.id, h.title, (GUIDE_CATS[h.cat] || {}).label || h.cat, h.group, h.length].map(q).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });   /* BOM: Excel opens it as UTF-8 */
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = state.rack.name.replace(/[^\w.-]+/g, '_') + '_harnesses.csv'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  state.tab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t => { t.classList.toggle('on', t === b); t.setAttribute('aria-selected', t === b); });
+  $('search').placeholder = state.tab === 'harness' ? 'Find a harness number or cable' : 'Find a cable or port (e.g. SSC3, EMS)';
+  renderList();
+});
 /* drag the right edge of the cable list to resize it (remembered per browser) */
 (function sideResizer() {
   const r = $('resizer'), app = document.querySelector('.app'); if (!r || !app) return;

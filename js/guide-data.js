@@ -454,4 +454,25 @@ function guideLanes(cables) {
   return out;
 }
 
-if (typeof module !== 'undefined') module.exports = { GUIDE_INLINE, guideCustomerOut, guideGeom, GUIDE_PANELS, GUIDE_PANEL_Z, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_ASSUMPTIONS, GUIDE_CONNECTORS, GUIDE_CATS, GUIDE_REAR_PORTS, GUIDE_PORT_NOTES, GUIDE_FRONT_PORTS, guidePart, guidePortPos, guideHolder, guideCables, guideRoute, guideLanes, guidePosts, guideRails };
+/* Harness list: every in-rack cable with its AYK harness number and its 3D route length (customer legs excluded).
+   Length = sum of the drawn route from socket to socket / inline connector, rounded UP to 10 mm: an estimate,
+   no bend or service-loop allowance. */
+function guideHarnessNo(c) {
+  const f = k => ((c.facts || []).find(x => x[0] === k) || [])[1];
+  const v = (c.holder && c.holder.pn) || f('AYK P/N') || f('Harness number') || c.pn || '';
+  return /^H\d/.test(v) ? v : '';
+}
+function guideRouteLength(legs) {
+  let mm = 0;
+  for (const l of legs) if (!l.customer) for (let i = 1; i < l.pts.length; i++) {
+    const a = l.pts[i - 1], b = l.pts[i]; mm += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  }
+  return Math.ceil(mm / 10) * 10;
+}
+function guideHarnesses(rack, cables) {
+  const list = cables || guideCables(rack), lanes = guideLanes(list);
+  return list.map(c => ({ id: c.id, harness: guideHarnessNo(c), title: c.title, cat: c.cat, front: !!c.front,
+    group: c.group || '', length: guideRouteLength(guideRoute(rack, c, lanes.get(c.id))) }));
+}
+
+if (typeof module !== 'undefined') module.exports = { GUIDE_INLINE, guideCustomerOut, guideGeom, GUIDE_PANELS, GUIDE_PANEL_Z, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_ASSUMPTIONS, GUIDE_CONNECTORS, GUIDE_CATS, GUIDE_REAR_PORTS, GUIDE_PORT_NOTES, GUIDE_FRONT_PORTS, guidePart, guidePortPos, guideHolder, guideCables, guideRoute, guideLanes, guidePosts, guideRails, guideHarnessNo, guideRouteLength, guideHarnesses };

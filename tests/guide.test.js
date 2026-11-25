@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const D = new Function(fs.readFileSync(path.join(ROOT, 'js', 'guide-data.js'), 'utf8') +
-  '\nreturn { GUIDE_INLINE, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_REAR_PORTS, GUIDE_CATS, GUIDE_CONNECTORS, guideGeom, guidePortPos, guideCables, guideRoute, guideLanes, guidePart, guidePosts };')();
+  '\nreturn { GUIDE_INLINE, GUIDE_TECHNOTES, GUIDE_GEOM, GUIDE_REAR_PORTS, GUIDE_CATS, GUIDE_CONNECTORS, guideGeom, guidePortPos, guideCables, guideRoute, guideLanes, guidePart, guidePosts, guideHarnesses, guideHarnessNo };')();
 const rack = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'guide', 's10195.json'), 'utf8'));
 
 let passed = 0; const failed = [];
@@ -157,6 +157,15 @@ ok('R1: holders beyond the CAD ones are flagged for confirmation', ext1.filter(c
 ok('R1: customer cables leave down the cable trunk', ext1.every(c => R1.get(c.id).slice(-1)[0].pts.some(p => Math.abs(p[0] - r1.trunk.x) < 1 && p[1] < r1.trunk.y0 + 50)));
 
 ok('geom.posts: explicit post list overrides the evenly spaced pattern', (() => { const G = D.guidePosts; return G({ width: 3000, geom: { posts: [156, 684, 1712, 2240] } }).join() === '156,684,1712,2240' && G({ width: 1000, geom: { postX0: 100, postPitch: 400 } }).join() === '100,500,900'; })());
+
+/* harness list (Harnesses tab) */
+{ const hr = D.guideHarnesses(rack), cs = D.guideCables(rack), L = D.guideLanes(cs);
+  ok('harness list: one row per cable, lengths positive and rounded up to 10 mm', hr.length === cs.length && hr.every(h => h.length > 0 && h.length % 10 === 0));
+  ok('harness list: length = in-rack route only (customer legs excluded)', (() => { const c = cs.find(x => x.holder), legs = D.guideRoute(rack, c, L.get(c.id));
+    const sum = ls => ls.reduce((n, l) => n + l.pts.slice(1).reduce((m, p, i) => m + Math.hypot(p[0] - l.pts[i][0], p[1] - l.pts[i][1], p[2] - l.pts[i][2]), 0), 0);
+    const h = hr.find(x => x.id === c.id); return h.length === Math.ceil(sum(legs.filter(l => !l.customer)) / 10) * 10 && h.length < Math.ceil(sum(legs) / 10) * 10; })());
+  ok('harness number: from the holder P/N, "AYK P/N" or "Harness number" facts, blank when not numbered', D.guideHarnessNo({ holder: { pn: 'H1234501' } }) === 'H1234501'
+    && D.guideHarnessNo({ facts: [['Harness number', 'H1234502']] }) === 'H1234502' && D.guideHarnessNo({ facts: [['Harness number', '– (not numbered)']] }) === ''); }
 
 /* rack navigation (js/racks.js): home dashboard and rail grouping */
 const NAV = require(path.join(__dirname, '..', 'js', 'racks.js'));
