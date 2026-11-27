@@ -35,6 +35,8 @@ header h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--muted); w
 .rail-home { flex: 1; color: var(--blue); font-weight: 700; font-size: 12.5px; text-decoration: none; }
 .rail-home:hover { text-decoration: underline; }
 .rail-btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 6px; width: 24px; height: 24px; cursor: pointer; font-size: 13px; line-height: 1; padding: 0; }
+a.rail-btn { display: inline-grid; place-items: center; text-decoration: none; font-weight: 700; }
+.rail-min .rail-help { display: none; }
 .rail-search { margin: 0 8px 6px; width: calc(100% - 16px); box-sizing: border-box; padding: 6px 8px; font-size: 12.5px; }
 .rail nav { padding: 0 6px 12px; }
 .rproj summary { cursor: pointer; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 8px 6px 4px; list-style: none; }
@@ -52,21 +54,218 @@ header h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--muted); w
 body.home { overflow: auto; }
 body.home .app { display: none; }
 body.home #home { display: block; min-height: 100vh; }
-.home-bar { display: flex; align-items: center; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--line); }
-.home-in { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
-.home-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
-.home-head h2 { margin: 0; font-size: 22px; } .home-head p { margin: 4px 0 0; color: var(--muted); }
-.home-head .search { width: min(360px, 100%); }
-.proj { margin-top: 22px; }
-.proj h3 { font-size: 15px; margin: 0 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-.proj h3 span { color: var(--muted); font-weight: 500; font-size: 12px; margin-left: 6px; }
-.pgroup h4 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-.rcard { position: relative; display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); text-decoration: none; }
-.rcard:hover, .rcard:focus-visible { border-color: var(--blue2); background: #14223f; outline: none; }
-.rcard b { display: block; font-size: 14px; padding-right: 40px; }
-.rcard small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
-.rcard em { position: absolute; top: 10px; right: 10px; font-style: normal; font-size: 10px; color: var(--orange); border: 1px solid rgba(249,115,22,.5); border-radius: 999px; padding: 0 6px; }
+/* ---- home page: hero with the AYK logo in a rotating glass panel, then a split: tutorial (left) | project folders
+   (right, sticky). Neutral graphite colours; the rack viewer keeps its blue theme. ---- */
+body.home { --bg: #0c0d10; --bg2: #121317; --card: #17181d; --line: rgba(255,255,255,.085); --text: #eceef2; --muted: #8d939e; --accent: #2f6fd6;
+  background: radial-gradient(1100px 520px at 85% -8%, rgba(255,255,255,.055), transparent 62%), var(--bg); }
+html:has(body.home) { scroll-behavior: smooth; background: #0c0d10; }
+.h-hero { max-width: 1440px; margin: 0 auto; padding: 40px 32px 30px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+.h-eyebrow { margin: 0 0 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.h-hero h1 { margin: 0; font-size: 44px; line-height: 1.05; letter-spacing: -.025em; font-weight: 800; }
+.h-hero .lead { margin: 12px 0 0; max-width: 580px; color: #b4b9c2; font-size: 16px; line-height: 1.6; }
+.h-stats { display: flex; gap: 26px; margin-top: 22px; }
+.h-stats div { display: flex; flex-direction: column; } .h-stats b { font-size: 20px; }
+.h-stats span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.h-split { max-width: 1440px; margin: 0 auto; padding: 0 32px 40px; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, 1fr); gap: 40px; align-items: start; }
+.h-side { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; background: rgba(255,255,255,.025); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.hp-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.hp-head h2 { margin: 0; font-size: 18px; } .hp-head p { margin: 3px 0 14px; color: var(--muted); font-size: 13px; }
+.hp-head .btn { text-decoration: none; color: var(--text); }
+#homeBody { margin-top: 14px; }
+.folders { display: flex; flex-direction: column; gap: 8px; }
+.folder, .hrow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); text-decoration: none; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.folder:hover, .folder:focus-visible, .hrow:hover, .hrow:focus-visible { border-color: rgba(255,255,255,.24); background: #1d1f25; outline: none; transform: translateY(-1px); }
+.f-ic, .r-ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: rgba(47,111,214,.13); color: #78a6ee; }
+.r-ic { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,.05); color: #aab0ba; }
+.f-ic svg, .r-ic svg { width: 56%; height: 56%; }
+.f-t, .r-t { flex: 1; min-width: 0; }
+.f-t b, .r-t b { display: block; font-size: 14px; }
+.f-t small, .r-t small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chev { color: var(--muted); font-size: 20px; line-height: 1; }
+.folder em, .hrow em { font-style: normal; font-size: 10px; color: #f0a35e; border: 1px solid rgba(240,163,94,.45); border-radius: 999px; padding: 0 6px; }
+.crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+.crumb a { color: #8fb4f0; text-decoration: none; } .crumb a:hover { text-decoration: underline; } .crumb span { color: var(--muted); }
+.hp-grp h4 { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; font-weight: 700; }
+.hp-grp h4 span { margin-left: 4px; opacity: .7; }
+.hp-grp .hrow + .hrow { margin-top: 6px; }
+.hp-note { color: var(--muted); font-size: 12.5px; margin: 0; }
+.mob-only { display: none !important; }
+/* glass panel with the rotating AYK logo */
+.glass-wrap { position: relative; width: 210px; height: 210px; perspective: 900px; flex: none; }
+.glass-glow { position: absolute; inset: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(47,111,214,.55), rgba(47,111,214,0) 70%); filter: blur(26px); animation: g-glow 7s ease-in-out infinite alternate; }
+.glass { position: absolute; inset: 8%; border-radius: 30px; background: radial-gradient(circle at 50% 50%, rgba(190,210,240,.16), transparent 62%), linear-gradient(140deg, rgba(255,255,255,.2), rgba(255,255,255,.05) 48%, rgba(255,255,255,.11));
+  border: 1px solid rgba(255,255,255,.2); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.06), 0 30px 60px rgba(0,0,0,.55);
+  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); perspective: 600px; overflow: hidden; animation: g-sway 9s ease-in-out infinite alternate; }
+.g-spin { position: absolute; left: 21%; top: 21%; width: 58%; height: 58%; transform-style: preserve-3d; animation: g-spin 14s linear infinite; }
+.g-spin img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.g-spin img.f { filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)); }
+.g-spin img.d { filter: brightness(.45); }
+.g-sheen { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.2) 48%, transparent 60%); background-size: 260% 100%; animation: g-sheen 7s ease-in-out infinite; pointer-events: none; }
+@keyframes g-spin { to { transform: rotateY(360deg); } }
+@keyframes g-sway { from { transform: rotateX(9deg) rotateY(-16deg); } to { transform: rotateX(-5deg) rotateY(16deg); } }
+@keyframes g-sheen { 0%, 40% { background-position: 130% 0; } 80%, 100% { background-position: -30% 0; } }
+@keyframes g-glow { from { opacity: .65; transform: scale(.92); } to { opacity: 1; transform: scale(1.08); } }
+
+/* ---- home: scrolling "how to use" tutorial (left column). A pinned sketch of the tool (#tm) lights up the part each
+   step talks about; the steps scroll under it. Step attributes: data-screen (home|viewer|phone), data-mode (sketch
+   state), data-hl (data-z names to light up). racks.js initTutorial() switches them as you scroll. ---- */
+.tut { min-width: 0; }
+.tut-head h2 { margin: 0; font-size: 18px; } .tut-head p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+.tut-vis { position: sticky; top: 0; z-index: 3; padding: 16px 0 14px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.tut-count { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.tut-dots { display: flex; gap: 5px; }
+.tut-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.16); cursor: pointer; }
+.tut-dots button.on { background: var(--accent); }
+.tut-steps { padding-bottom: 30vh; }
+.tstep { min-height: 52vh; max-width: 660px; display: flex; flex-direction: column; padding: 36px 0 24px; opacity: .3; transition: opacity .3s; }
+.tstep.on { opacity: 1; }
+.tstep .no { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.tstep h3 { font-size: 20px; margin: 12px 0 8px; }
+.tstep p, .tstep li { color: #c3c8d0; font-size: 14.5px; line-height: 1.65; margin: 0 0 8px; }
+.tstep ul { padding-left: 18px; margin: 4px 0 8px; } .tstep li { margin: 0 0 4px; }
+.tstep .hint { font-size: 13px; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 6px; }
+.tstep b { color: var(--text); }
+.ui { display: inline-block; font-size: 12.5px; font-weight: 700; line-height: 1.5; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--card); color: var(--text); white-space: nowrap; }
+kbd { font: 600 12px/1.5 ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; background: var(--card); color: var(--text); }
+.tut-end { padding: 0 0 30px; color: var(--muted); }
+.tut-end .btn { text-decoration: none; color: var(--text); display: inline-block; margin-left: 8px; }
+/* the sketch */
+.tm { container-type: inline-size; width: min(100%, 80vh); margin: 0 auto;
+      --bg: #080d1d; --bg2: #0d1528; --card: #111b31; --line: rgba(120,145,185,.22); --muted: #9aabc6; --text: #f3f6fc; color: var(--text); }
+.tm-frame { position: relative; aspect-ratio: 16 / 10.5; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,.45); font-size: 10px; font-size: 1.45cqw; line-height: 1.35; user-select: none; }
+.tm-url { position: absolute; left: 0; right: 0; top: 0; height: 7%; display: flex; align-items: center; gap: .8em; padding: 0 1em; background: #0b1224; border-bottom: 1px solid var(--line); }
+.tm-url i { width: .75em; height: .75em; border-radius: 50%; background: #2a3a5c; display: inline-block; margin-right: .3em; }
+.tm-addr { flex: 1; height: 66%; border-radius: 999px; background: var(--card); display: flex; align-items: center; padding: 0 1em; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.tm-addr b { color: var(--orange); font-weight: 700; }
+.tm-scr { position: absolute; left: 0; right: 0; bottom: 0; top: 7%; opacity: 0; visibility: hidden; transition: opacity .35s, visibility .35s; }
+.tm[data-screen="home"] .s-home, .tm[data-screen="viewer"] .s-viewer, .tm[data-screen="phone"] .s-phone { opacity: 1; visibility: visible; }
+.tm [data-z] { transition: box-shadow .3s; }
+.tm [data-z].hl { box-shadow: 0 0 0 .2em var(--orange), 0 0 1.6em rgba(249,115,22,.55); }
+.tm .area[data-z].hl { box-shadow: inset 0 0 0 .22em var(--orange), inset 0 0 2.2em rgba(249,115,22,.28); }
+.tm-logo { width: 1.7em; height: 1.7em; border-radius: .35em; background: #fff url(assets/ayk-energy-logo.png) center / 80% no-repeat; flex: none; }
+.tm-b { display: inline-block; border: 1px solid var(--line); border-radius: .45em; padding: .15em .55em; font-weight: 700; white-space: nowrap; color: var(--text); background: transparent; }
+.tm-b.on { background: var(--blue2); border-color: var(--blue2); color: #fff; }
+.tm-ln { display: block; height: .55em; border-radius: .3em; background: rgba(154,171,198,.2); }
+.tm-mut { color: var(--muted); }
+/* home screen (neutral, like the real home page) */
+.s-home { --bg: #0c0d10; --card: #17181d; --line: rgba(255,255,255,.1); --muted: #8d939e; background: var(--bg); }
+.tm-hhero { display: flex; justify-content: space-between; align-items: center; padding: 1.3em 2em .9em; }
+.tm-hhero b { display: block; font-size: 2.1em; letter-spacing: -.02em; }
+.tm-glass { width: 4.6em; height: 4.6em; border-radius: 1em; border: 1px solid rgba(255,255,255,.22); flex: none;
+  background: linear-gradient(140deg, rgba(255,255,255,.18), rgba(255,255,255,.03)), url(assets/ayk-energy-logo.png) center / 56% no-repeat, #1a1f2b; }
+.tm-hsplit { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.4em; padding: 0 2em; }
+.tm-hmini { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: .6em; background: #080d1d; margin: .5em 0 .8em; }
+.tm-htut .tm-ln { margin-top: .55em; }
+.tm-hside { border: 1px solid var(--line); border-radius: .8em; padding: .9em; display: flex; flex-direction: column; gap: .6em; background: rgba(255,255,255,.025); }
+.tm-folders { display: flex; flex-direction: column; gap: .45em; border-radius: .6em; }
+.tm-fd { display: flex; align-items: center; gap: .6em; border: 1px solid var(--line); border-radius: .6em; background: var(--card); padding: .55em .6em; color: var(--muted); }
+.tm-fd i { width: 1.9em; height: 1.6em; border-radius: .35em; background: rgba(47,111,214,.4); flex: none; }
+.tm-fd > span { flex: 1; } .tm-fd b { display: block; color: var(--text); margin-bottom: .35em; }
+.tm-fd.hot { border-color: rgba(255,255,255,.32); background: #1d1f25; }
+.tm-cursor { position: absolute; left: 80%; top: 50%; width: 2.2em; height: 2.2em; pointer-events: none; animation: tm-cur 3s ease-in-out infinite; }
+@keyframes tm-cur { 0%, 100% { transform: translate(3em, 2.5em); } 45%, 60% { transform: none; } 52% { transform: scale(.85); } }
+/* viewer screen */
+.s-viewer { display: grid; grid-template-columns: 15% 27% 1fr; grid-template-rows: 9% 1fr; }
+.tm-hdr { grid-column: 1 / -1; display: flex; align-items: center; gap: .5em; padding: 0 .9em; border-bottom: 1px solid var(--line); font-size: .92em; min-width: 0; }
+.tm-hdr .tm-mut { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tm-views { margin-left: auto; display: flex; gap: .3em; align-items: center; border-radius: .5em; flex: none; }
+.tm-seg { display: inline-flex; gap: .2em; align-items: center; padding-left: .5em; margin-left: .2em; border-left: 1px solid var(--line); border-radius: .4em; }
+.tm-seg small { font-size: .8em; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.tm-rail { border-right: 1px solid var(--line); padding: .8em .7em; min-height: 0; overflow: hidden; }
+.tm-rail .tm-ln { margin: .6em 0; } .tm-rail .tm-ln.on { background: rgba(0,140,255,.5); }
+.tm-rail-top { display: flex; justify-content: space-between; color: var(--blue); font-weight: 700; margin-bottom: .6em; }
+.tm-side { background: var(--bg2); border-right: 1px solid var(--line); padding: .8em; display: flex; flex-direction: column; gap: .6em; min-height: 0; overflow: hidden; }
+.tm-tabs { display: flex; gap: .3em; border-radius: .45em; }
+.tm-tab { flex: 1; text-align: center; border: 1px solid var(--line); border-radius: .4em; padding: .15em 0; font-weight: 700; color: var(--muted); }
+.tm-tab.on { background: var(--blue2); border-color: var(--blue2); color: #fff; }
+.tm[data-mode~="harness"] .tm-tab.t1 { background: transparent; border-color: var(--line); color: var(--muted); }
+.tm[data-mode~="harness"] .tm-tab.t2 { background: var(--blue2); border-color: var(--blue2); color: #fff; }
+.tm-chips { display: flex; flex-wrap: wrap; gap: .3em; border-radius: .5em; }
+.tm-chip { display: inline-flex; align-items: center; gap: .3em; border: 1px solid var(--line); border-radius: 999px; padding: .05em .5em; font-size: .9em; }
+.tm-chip i { width: .65em; height: .65em; border-radius: 50%; }
+.tm-chip.off { opacity: .45; }
+.tm-list, .tm-htab { flex: 1; display: flex; flex-direction: column; gap: .3em; min-height: 0; overflow: hidden; border-radius: .5em; }
+.tm-grp { font-size: .8em; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: .3em .2em; }
+.tm-it { display: flex; align-items: center; gap: .5em; padding: .35em .45em; border-radius: .4em; border: 1px solid transparent; }
+.tm-it i { width: .75em; height: .75em; border-radius: .2em; flex: none; } .tm-it .tm-ln { flex: 1; }
+.tm[data-mode~="card"] .tm-it.sel { background: rgba(0,140,255,.16); border-color: rgba(0,168,255,.5); }
+.tm-htab { display: none; font-size: .88em; }
+.tm[data-mode~="harness"] .tm-list { display: none; }
+.tm[data-mode~="harness"] .tm-htab { display: flex; }
+.tm-hb { display: flex; justify-content: space-between; align-items: center; color: var(--muted); padding-bottom: .2em; }
+.tm-hr { display: grid; grid-template-columns: 6.2em 1fr 3em; gap: .5em; align-items: center; padding: .25em .2em; border-bottom: 1px solid var(--line); }
+.tm-hr b { font-weight: 700; } .tm-hr span:last-child { text-align: right; color: var(--muted); }
+.tm-hr .tm-ln { display: flex; align-items: center; background: none; height: auto; gap: .4em; }
+.tm-hr .tm-ln::before { content: ""; width: .6em; height: .6em; border-radius: 50%; background: var(--c); flex: none; }
+.tm-hr .tm-ln::after { content: ""; flex: 1; height: .5em; border-radius: .3em; background: rgba(154,171,198,.2); }
+.tm-stage { position: relative; overflow: hidden; border-radius: 0; }
+.tm-stage > [data-rack] { position: absolute; inset: 3% 2% 3% 2%; }
+.tm-stage svg, .tm-ph-stage svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.tm-about { position: absolute; left: 3%; top: 4%; }
+.tm-aboutbox { position: absolute; left: 3%; top: 14%; width: 62%; background: rgba(17,27,49,.97); border: 1px solid var(--line); border-radius: .6em; padding: .8em; display: none; }
+.tm-aboutbox .tm-ln { margin-top: .55em; }
+.tm[data-mode~="about"] .tm-aboutbox { display: block; }
+.tm-legend { position: absolute; left: 3%; bottom: 4%; background: rgba(17,27,49,.92); border: 1px solid var(--line); border-radius: .6em; padding: .4em .7em; color: var(--muted); font-size: .9em; }
+.tm-legend b { color: var(--text); }
+.tm[data-mode~="card"] .tm-legend, .tm[data-mode~="about"] .tm-legend { display: none; }
+.tm-tip { position: absolute; left: 25%; top: 50%; background: #0b1220; border: 1px solid var(--line); border-radius: .5em; padding: .35em .6em; display: none; font-size: .9em; white-space: nowrap; }
+.tm[data-mode~="hover"] .tm-tip { display: block; }
+.tm-card { position: absolute; right: 3%; bottom: 4%; width: 60%; background: rgba(17,27,49,.97); border: 1px solid var(--line); border-radius: .7em; padding: .8em .9em; box-shadow: 0 1em 2.4em rgba(0,0,0,.45);
+           opacity: 0; transform: translateY(8%); transition: opacity .35s, transform .35s, box-shadow .3s; }
+.tm[data-mode~="card"] .tm-card { opacity: 1; transform: none; }
+.tm-card .badge { font-size: .85em; }
+.tm-card h4 { margin: .3em 0 .1em; font-size: 1.15em; }
+.tm-kv { display: grid; grid-template-columns: 5.5em 1fr; gap: .2em .6em; margin: .5em 0; color: var(--muted); align-items: center; }
+.tm-kv span:nth-child(even) { color: var(--text); }
+.tm-steps { margin: .4em 0; }
+.tm-steps div { display: flex; align-items: center; gap: .5em; padding: .25em .3em; border-radius: .4em; color: var(--muted); }
+.tm-steps div::before { content: attr(data-n); width: 1.5em; height: 1.5em; border-radius: 50%; background: #23314f; color: #cfe0ff; font-size: .85em; font-weight: 700; display: grid; place-items: center; flex: none; }
+.tm-steps div.cur { background: rgba(0,140,255,.14); color: var(--text); }
+.tm-steps div.cur::before { background: var(--blue2); color: #fff; }
+.tm-player { display: flex; gap: .25em; align-items: center; flex-wrap: nowrap; border-radius: .5em; }
+.tm-player .grow { flex: 1; }
+.tm-player .tm-b { padding: .1em .4em; }
+/* the rack drawing (svg built by racks.js) */
+.tr-c { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: opacity .3s, stroke-width .3s; }
+.tm[data-mode~="card"] .tr-c:not(.tr-sel), .tm[data-mode~="phone"] .tr-c:not(.tr-sel) { opacity: .2; }
+.tm[data-mode~="card"] .tr-sel, .tm[data-mode~="hover"] .tr-sel, .tm[data-mode~="phone"] .tr-sel { stroke-width: 3.4; }
+.tr-spark { fill: none; stroke: #fff; stroke-width: 3.6; stroke-linecap: round; stroke-dasharray: 7 100; stroke-dashoffset: 7; opacity: 0; }
+.tm[data-mode~="card"] .tr-spark, .tm[data-mode~="phone"] .tr-spark { opacity: 1; animation: tr-spark 2.6s linear infinite; }
+@keyframes tr-spark { from { stroke-dashoffset: 7; } to { stroke-dashoffset: -100; } }
+.tr-port { fill: none; stroke: var(--blue); stroke-width: 1.4; opacity: 0; transform-box: view-box; transform-origin: 54px 60px; }
+.tm[data-mode~="hover"] .tr-port { animation: tr-ping 1.6s ease-out infinite; }
+@keyframes tr-ping { from { opacity: 1; transform: scale(.5); } to { opacity: 0; transform: scale(2.6); } }
+.tr-rack { transform-box: view-box; transform-origin: 120px 85px; }
+.tm[data-mode~="camera"] .tr-rack { animation: tr-orbit 4.5s ease-in-out infinite alternate; }
+@keyframes tr-orbit { from { transform: translateX(-8px) scale(.92) skewY(-2.5deg); } to { transform: translateX(8px) scale(1.07) skewY(2.5deg); } }
+/* phone screen */
+.s-phone { display: grid; place-items: center; }
+.tm-ph { position: relative; height: 92%; aspect-ratio: 9 / 18; border: .4em solid #1f2a44; border-radius: 1.8em; background: var(--bg); overflow: hidden; display: flex; flex-direction: column; font-size: .85em; }
+.tm-ph-hdr { display: flex; gap: .35em; align-items: center; padding: .7em .5em; border-bottom: 1px solid var(--line); }
+.tm-ph-stage { flex: 1; position: relative; padding-bottom: 60%; }
+.tm-ph-stage > [data-rack] { position: absolute; left: 0; right: 0; top: 2%; height: 56%; }
+.tm-ph-sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: rgba(17,27,49,.97); border-top: 1px solid var(--line); border-radius: 1em 1em 0 0; padding: .7em; display: flex; flex-direction: column; gap: .45em; }
+.tm-ph-sheet .top { display: flex; justify-content: space-between; align-items: center; }
+.tm-ph-drawer { position: absolute; top: 0; bottom: 0; left: 0; width: 80%; background: var(--bg2); border-right: 1px solid var(--line); padding: .8em .7em; z-index: 3; transform: translateX(-102%); display: flex; flex-direction: column; gap: .5em; box-shadow: 0 0 2em rgba(0,0,0,.6); }
+.tm[data-mode~="phone"] .tm-ph-drawer { animation: tm-drawer 7s ease-in-out infinite; }
+@keyframes tm-drawer { 0%, 10% { transform: translateX(-102%); } 20%, 45% { transform: none; } 55%, 100% { transform: translateX(-102%); } }
+@media (prefers-reduced-motion: reduce) { .tm *, .tm-cursor { animation: none !important; } html:has(body.home) { scroll-behavior: auto; } }
+@media (max-width: 900px) {
+  .h-hero { padding: 24px 16px 10px; gap: 16px; }
+  .h-hero h1 { font-size: 32px; } .h-hero .lead { font-size: 14.5px; }
+  .glass-wrap { width: 118px; height: 118px; } .glass { border-radius: 20px; }
+  .h-stats { gap: 18px; margin-top: 14px; }
+  .h-split { grid-template-columns: minmax(0, 1fr); padding: 0 16px 30px; gap: 28px; }
+  .h-side { position: static; max-height: none; order: -1; padding: 16px; }
+  .mob-only { display: inline-block !important; }
+  .tut-vis { margin: 0 -16px; padding: 10px 16px; }
+  .tm { width: min(100%, 62vh); }
+  .tstep { min-height: 62vh; padding-top: 30px; }
+  .tstep h3 { font-size: 18px; }
+}
+@media (max-width: 480px) { .glass-wrap { width: 92px; height: 92px; } .h-hero h1 { font-size: 28px; } .h-stats b { font-size: 17px; } }
+@media (prefers-reduced-motion: reduce) { .glass, .g-spin, .g-sheen, .glass-glow { animation: none !important; } }
+}
 aside { border-right: 1px solid var(--line); background: var(--bg2); display: flex; flex-direction: column; min-height: 0; position: relative; }
 .resizer { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 5; touch-action: none; }
 .resizer:hover, .resizer.on { background: rgba(0,140,255,.35); }
@@ -179,8 +378,168 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
 </head>
 <body>
 <div id="home">
-  <div class="home-bar"><span class="brand"><img src="assets/ayk-energy-logo.png" alt=""> Wirelens</span></div>
-  <main id="homeMain"></main>
+  <section class="h-hero" id="top">
+    <div><p class="h-eyebrow">AYK Energy · Customer wiring</p><h1>Wirelens</h1>
+      <p class="lead">Interactive 3D wiring guides for AYK battery racks. Open a project to find your rack, then follow every cable step by step.</p>
+      <div class="h-stats" id="homeStats"></div></div>
+    <div class="glass-wrap" aria-hidden="true"><div class="glass-glow"></div>
+      <div class="glass"><div class="g-spin"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-5px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-3px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(3px)"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(5px)"></div><div class="g-sheen"></div></div></div>
+  </section>
+  <div class="h-split">
+  <section class="tut" id="tutorial" aria-labelledby="tutTitle">
+    <div class="tut-head"><h2 id="tutTitle">How to use Wirelens</h2><p>Scroll down. The picture shows which part of the tool each step is about.</p></div>
+    <div class="tut-grid">
+      <div class="tut-vis" aria-hidden="true">
+        <div class="tut-count"><span id="tutN">Step 1</span><span class="tut-dots" id="tutDots"></span></div>
+        <div class="tm" id="tm" data-screen="home" data-mode="">
+          <div class="tm-frame">
+            <div class="tm-url" data-z="url"><span><i></i><i></i><i></i></span><span class="tm-addr" id="tmAddr">wirelens/</span></div>
+
+            <div class="tm-scr s-home">
+              <div class="tm-hhero"><div><b>Wirelens</b><span class="tm-mut">Interactive 3D wiring guides for AYK battery racks</span></div><span class="tm-glass"></span></div>
+              <div class="tm-hsplit">
+                <div class="tm-htut"><span class="tm-mut">How to use Wirelens</span><div class="tm-hmini"></div><span class="tm-ln"></span><span class="tm-ln" style="width:70%"></span></div>
+                <div class="tm-hside"><b>Projects</b><span class="tm-search" data-z="hsearch">🔍 Search all racks</span>
+                  <div class="tm-folders" data-z="hcards">
+                    <div class="tm-fd hot"><i></i><span><b>Project A</b><span class="tm-ln" style="width:80%"></span></span>›</div>
+                    <div class="tm-fd"><i></i><span><b>Project B</b><span class="tm-ln" style="width:60%"></span></span>›</div>
+                    <div class="tm-fd"><i></i><span><b>Demo racks</b><span class="tm-ln" style="width:70%"></span></span>›</div>
+                  </div></div>
+              </div>
+              <svg class="tm-cursor" viewBox="0 0 24 24"><path d="M5 3l14 9-6 1.5L10 20z" fill="#fff" stroke="#080d1d" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </div>
+
+            <div class="tm-scr s-viewer">
+              <div class="tm-hdr"><span class="tm-logo"></span><span class="tm-mut">Rack 2 · customer wiring guide</span>
+                <span class="tm-views"><span class="tm-views" data-z="views"><span class="tm-b on">Rear</span><span class="tm-b">Front</span><span class="tm-b">Signal panel</span><span class="tm-b">MSM</span><span class="tm-b">Overview</span></span>
+                  <span class="tm-b on" data-z="cad">CAD model</span>
+                  <span class="tm-seg" data-z="front"><small>Front</small><span class="tm-b on">Power</span><span class="tm-b">Comm</span><span class="tm-b">Both</span></span></span>
+              </div>
+              <div class="tm-rail area" data-z="rail"><div class="tm-rail-top"><span>All racks</span><span>?&nbsp;«</span></div>
+                <span class="tm-ln" style="width:60%"></span><span class="tm-ln"></span><span class="tm-ln on"></span><span class="tm-ln" style="width:80%"></span><span class="tm-ln" style="width:70%"></span><span class="tm-ln"></span></div>
+              <div class="tm-side area" data-z="side">
+                <div class="tm-tabs" data-z="tabs"><span class="tm-tab on t1">Cables</span><span class="tm-tab t2">Harnesses</span></div>
+                <span class="tm-search" data-z="search">Find a cable or port (SSC3, EMS)</span>
+                <div class="tm-chips" data-z="chips"><span class="tm-chip"><i style="background:#e5484d"></i>AC primary</span><span class="tm-chip"><i style="background:#2f80ed"></i>AC backup</span><span class="tm-chip"><i style="background:#30a46c"></i>Comm</span><span class="tm-chip off"><i style="background:#f59e0b"></i>E-stop</span><span class="tm-chip"><i style="background:#a855f7"></i>Customer</span></div>
+                <div class="tm-list" data-z="list">
+                  <span class="tm-grp">▾ Customer connections</span>
+                  <span class="tm-it sel"><i style="background:#a855f7"></i><span class="tm-ln"></span></span><span class="tm-it"><i style="background:#a855f7"></i><span class="tm-ln"></span></span>
+                  <span class="tm-grp">▸ MSM</span><span class="tm-grp">▾ SSC1</span>
+                  <span class="tm-it"><i style="background:#e5484d"></i><span class="tm-ln"></span></span><span class="tm-it"><i style="background:#2f80ed"></i><span class="tm-ln"></span></span><span class="tm-it"><i style="background:#30a46c"></i><span class="tm-ln"></span></span>
+                  <span class="tm-grp">▸ SSC2</span>
+                </div>
+                <div class="tm-htab" data-z="htab">
+                  <div class="tm-hb"><span>42 cables · 38.6 m</span><span class="tm-b" data-z="csv">Download CSV</span></div>
+                  <div class="tm-hr"><b>Harness</b><span class="tm-mut">Cable</span><span>mm</span></div>
+                  <div class="tm-hr"><b>H0001001</b><span class="tm-ln" style="--c:#e5484d"></span><span>1 240</span></div>
+                  <div class="tm-hr"><b>H0001002</b><span class="tm-ln" style="--c:#2f80ed"></span><span>1 310</span></div>
+                  <div class="tm-hr"><b>H0001003*</b><span class="tm-ln" style="--c:#30a46c"></span><span>450</span></div>
+                  <div class="tm-hr"><b>H0001004</b><span class="tm-ln" style="--c:#a855f7"></span><span>2 870</span></div>
+                  <div class="tm-hr"><b class="tm-mut">–</b><span class="tm-ln" style="--c:#30a46c"></span><span>620</span></div>
+                </div>
+              </div>
+              <div class="tm-stage area" data-z="stage">
+                <div data-rack></div>
+                <span class="tm-b tm-about" data-z="about">About this model</span>
+                <div class="tm-aboutbox"><b>Rack 2</b> <span class="tm-mut">from the front-view drawing · 5 SSCs, 1 MSM, 10 modules</span><b style="display:block;margin-top:.5em">Draft assumptions</b><span class="tm-ln"></span><span class="tm-ln" style="width:80%"></span><span class="tm-ln" style="width:90%"></span></div>
+                <div class="tm-legend"><b>Pick a cable</b> · drag to rotate · scroll to zoom · right-drag to pan</div>
+                <div class="tm-tip"><b>EMS → MSM1</b><br><span class="tm-mut">Customer comm cable</span></div>
+                <div class="tm-card" data-z="card">
+                  <span class="badge" style="color:#a855f7">Customer connection</span>
+                  <h4>EMS → MSM1</h4><span class="tm-mut">Signal panel · EMS → MSM1 · CAN</span>
+                  <div class="tm-kv"><span>Cable</span><span>Shielded twisted pair</span><span>Connector</span><span>RJ45</span><span>Harness</span><span>H0001004</span></div>
+                  <div class="tm-steps"><div data-n="1">Plug in at the signal panel</div><div data-n="2" class="cur">Down the cable tray</div><div data-n="3">Into MSM1, port CAN</div></div>
+                  <div class="tm-player" data-z="player"><span class="tm-b">◀</span><span class="tm-b on">Pause</span><span class="tm-b">▶</span><span class="tm-b">Slow</span><span class="tm-b on">Normal</span><span class="tm-b">Fast</span><span class="grow"></span><span class="tm-b">✕</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tm-scr s-phone">
+              <div class="tm-ph">
+                <div class="tm-ph-hdr"><span class="tm-logo"></span><span class="tm-b" data-z="plist">☰ Cables</span><span class="tm-b on">Rear</span><span class="tm-b">Front</span></div>
+                <div class="tm-ph-stage"><div data-rack></div></div>
+                <div class="tm-ph-sheet" data-z="psheet"><div class="top"><b>EMS → MSM1</b><span class="tm-b">▾</span></div><span class="tm-ln"></span><span class="tm-ln" style="width:70%"></span><div class="tm-player"><span class="tm-b">◀</span><span class="tm-b on">Pause</span><span class="tm-b">▶</span></div></div>
+                <div class="tm-ph-drawer"><b>Cables</b><span class="tm-search">Find a cable</span><span class="tm-it"><i style="background:#a855f7"></i><span class="tm-ln"></span></span><span class="tm-it"><i style="background:#e5484d"></i><span class="tm-ln"></span></span><span class="tm-it"><i style="background:#30a46c"></i><span class="tm-ln"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tut-steps">
+        <article class="tstep" data-screen="home" data-hl="hsearch hcards" data-addr="home">
+          <span class="no">1</span><h3>Open a project, pick a rack</h3>
+          <p>The <b>Projects</b> panel (on the right, or at the top on a phone) shows each project as a folder. Open a folder to see its racks and banks, then click one to open its 3D wiring guide.</p>
+          <p>The <b>search box</b> finds racks in all projects at once, e.g. <i>bank 14</i>, <i>Type B</i> or <i>service</i>.</p>
+          <p class="hint">To come back here, click the Wirelens logo or <span class="ui">All racks</span>.</p>
+        </article>
+        <article class="tstep" data-hl="rail side stage">
+          <span class="no">2</span><h3>The three areas</h3>
+          <ul><li><b>Rack list</b> (left): jump to another rack. <span class="ui">«</span> folds it away.</li>
+            <li><b>Cable list</b>: every cable the customer connects in this rack.</li>
+            <li><b>3D model</b>: the rack with all its cables, coloured by type.</li></ul>
+          <p class="hint">Drag the border between the list and the model to make the list wider or narrower.</p>
+        </article>
+        <article class="tstep" data-hl="views stage" data-mode="camera">
+          <span class="no">3</span><h3>Look around the rack</h3>
+          <ul><li><b>Mouse:</b> drag to rotate, scroll to zoom, right-drag to pan.</li>
+            <li><b>Touch:</b> one finger to rotate, pinch to zoom, two fingers to pan.</li></ul>
+          <p>The buttons at the top fly the camera to a fixed view: <span class="ui">Rear</span> <span class="ui">Front</span> <span class="ui">Signal panel</span> <span class="ui">MSM</span> <span class="ui">Overview</span>.</p>
+        </article>
+        <article class="tstep" data-hl="search chips list">
+          <span class="no">4</span><h3>Find a cable</h3>
+          <p>Type a cable name or a port in the <b>search box</b>, e.g. <i>SSC3</i> or <i>EMS</i>.</p>
+          <p>The <b>colour chips</b> show or hide a type of cable: AC power, communication, E-stop, customer connections and more. A chip's colour is the cable's colour in the model.</p>
+          <p>The list is grouped by device. Click a group to open it.</p>
+        </article>
+        <article class="tstep" data-hl="card" data-mode="card">
+          <span class="no">5</span><h3>Follow the route</h3>
+          <p>Pick a cable and its card opens. It shows where the cable starts and ends, the cable and connector, the harness number, what AYK supplies and which technote applies.</p>
+          <p>The numbered steps are the route. The camera flies to each one and a light runs along the cable.</p>
+          <ul><li><span class="ui">Play route</span> / <span class="ui">Pause</span>, <span class="ui">◀</span> <span class="ui">▶</span> for one step at a time, or click a step.</li>
+            <li><span class="ui">Slow</span> <span class="ui">Normal</span> <span class="ui">Fast</span> sets the speed.</li>
+            <li>Keyboard: <kbd>←</kbd> <kbd>→</kbd> for steps, <kbd>Esc</kbd> to close.</li></ul>
+        </article>
+        <article class="tstep" data-hl="stage" data-mode="hover">
+          <span class="no">6</span><h3>Click in the model</h3>
+          <p>Point at a cable or a port to see its name.</p>
+          <ul><li><b>Click a cable</b> to open its route. Click another part of the same cable to jump to that step.</li>
+            <li><b>Click a port</b> to see its connector and which cable plugs into it.</li></ul>
+        </article>
+        <article class="tstep" data-hl="front cad">
+          <span class="no">7</span><h3>Front cables and the CAD model</h3>
+          <p>Racks with power and communication cables on the front get <span class="ui">Power</span> <span class="ui">Comm</span> <span class="ui">Both</span> at the top, so you can show one set at a time.</p>
+          <p>Racks built from a SolidWorks model have a <span class="ui">CAD model</span> button. It switches between the real model and a simplified one.</p>
+        </article>
+        <article class="tstep" data-hl="tabs htab csv" data-mode="harness">
+          <span class="no">8</span><h3>Harness list</h3>
+          <p>The <span class="ui">Harnesses</span> tab lists every cable with its harness number and route length in mm, plus the total length.</p>
+          <p>An <b>*</b> means the number is assumed from a labelled cable of the same kind. Please confirm those with AYK.</p>
+          <p><span class="ui">Download CSV</span> saves the list for Excel. Click a row to show that cable in the model.</p>
+        </article>
+        <article class="tstep" data-hl="about" data-mode="about">
+          <span class="no">9</span><h3>About this model</h3>
+          <p><span class="ui">About this model</span> says what the rack was built from and how many devices and cables it has.</p>
+          <p>It also lists the <b>draft assumptions</b>. Read them before you rely on a detail.</p>
+        </article>
+        <article class="tstep" data-hl="url" data-mode="card" data-addr="share">
+          <span class="no">10</span><h3>Share a cable</h3>
+          <p>When a cable is open, the address in the browser ends with that cable's name (after the <b>#</b>).</p>
+          <p>Copy the address and send it to a colleague. The link opens the same rack with the same cable selected.</p>
+        </article>
+        <article class="tstep" data-screen="phone" data-hl="plist psheet" data-mode="phone">
+          <span class="no">11</span><h3>On a phone or tablet</h3>
+          <ul><li><span class="ui">☰ Cables</span> opens the cable list. It closes again when you pick a cable.</li>
+            <li>The route card sits at the bottom. <span class="ui">▾</span> shrinks it so you can see more of the rack.</li>
+            <li>The buttons at the top scroll sideways.</li></ul>
+          <p class="hint">Turn the phone sideways for a bigger view.</p>
+        </article>
+      </div>
+    </div>
+    <div class="tut-end">That's everything. <a class="btn" href="#top">↑ Back to top</a></div>
+  </section>
+  <aside class="h-side" aria-label="Projects"><div id="homeMain"></div></aside>
+  </div>
 </div>
 <div class="app">
   <header>
@@ -200,7 +559,7 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
   <aside class="rail" id="rail" aria-label="Racks"></aside>
   <div class="scrim" id="scrim"></div>
   <aside aria-label="Cables" id="side">
-    <div class="side-head"><a class="rail-home" href="./">← All racks</a><button class="btn" id="sideClose" aria-label="Close the list">✕</button></div>
+    <div class="side-head"><span><a class="rail-home" href="./">← All racks</a> &nbsp; <a class="rail-home" href="./#tutorial">How to use</a></span><button class="btn" id="sideClose" aria-label="Close the list">✕</button></div>
     <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Drag to resize the cable list" tabindex="0"></div>
     <div class="side-top">
       <div class="tabs" role="tablist" aria-label="Side panel"><button class="tab on" data-tab="cables" role="tab" aria-selected="true">Cables</button><button class="tab" data-tab="harness" role="tab" aria-selected="false">Harnesses</button></div>
@@ -219,8 +578,8 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
     <section class="card" id="card" hidden aria-live="polite"></section>
   </main>
 </div>
-<script src="js/racks.js?v=4"></script>
-<script src="js/guide-data.js?v=4"></script>
-<script type="module" src="js/guide3d.js?v=4"></script>
+<script src="js/racks.js?v=6"></script>
+<script src="js/guide-data.js?v=6"></script>
+<script type="module" src="js/guide3d.js?v=6"></script>
 </body>
 </html>
