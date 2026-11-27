@@ -60,8 +60,23 @@ body.home { --bg: #0c0d10; --bg2: #121317; --card: #17181d; --line: rgba(255,255
   background: radial-gradient(1100px 520px at 85% -8%, rgba(255,255,255,.055), transparent 62%), var(--bg); }
 html:has(body.home) { scroll-behavior: smooth; background: #0c0d10; }
 .h-hero { max-width: 1440px; margin: 0 auto; padding: 40px 32px 30px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
-.h-eyebrow { margin: 0 0 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-.h-hero h1 { margin: 0; font-size: 44px; line-height: 1.05; letter-spacing: -.025em; font-weight: 800; }
+.h-hero h1 { margin: 0; font-size: 56px; line-height: 1.1; letter-spacing: -.025em; font-weight: 800; }
+/* "Wirelens" with a wire weaving through the letters and a light running along it (like a highlighted cable).
+   The wire is drawn twice: behind the text (shows in the gaps) and in front in dashes, so it goes in and out. */
+.h-title { position: relative; display: inline-block; padding: 0 .35em 0 .3em; margin-left: -.3em; }
+.h-title span { position: relative; z-index: 1; }
+.h-title svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.h-title .w-back { z-index: 0; } .h-title .w-front { z-index: 2; }
+.h-title path { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.w-wire { stroke: #2f6fd6; stroke-width: 3.2; }
+.w-wire.in { stroke: #6fa0ec; stroke-width: 1; opacity: .7; }
+.w-over { stroke: #2f6fd6; stroke-width: 3.2; stroke-dasharray: 7 9; }
+.w-spark { stroke: #fff; stroke-width: 7.5; stroke-dasharray: 2.5 120; stroke-dashoffset: 2.5; filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px #6fa0ec) drop-shadow(0 0 22px #2f6fd6); animation: w-run 3.6s linear infinite; }
+.w-trail { stroke: #bcd6ff; stroke-width: 4.2; stroke-dasharray: 14 120; stroke-dashoffset: 14; opacity: .75; animation: w-trail 3.6s linear infinite; }
+@keyframes w-run { from { stroke-dashoffset: 2.5; } to { stroke-dashoffset: -100; } }
+@keyframes w-trail { from { stroke-dashoffset: 14; } to { stroke-dashoffset: -88.5; } }
+.h-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: none; }
+.h-ayk { font-size: 13px; font-weight: 800; letter-spacing: .32em; margin-right: -.32em; color: #c9ced6; }
 .h-hero .lead { margin: 12px 0 0; max-width: 580px; color: #b4b9c2; font-size: 16px; line-height: 1.6; }
 .h-stats { display: flex; gap: 26px; margin-top: 22px; }
 .h-stats div { display: flex; flex-direction: column; } .h-stats b { font-size: 20px; }
@@ -252,7 +267,8 @@ kbd { font: 600 12px/1.5 ui-monospace, Consolas, monospace; border: 1px solid va
 @media (prefers-reduced-motion: reduce) { .tm *, .tm-cursor { animation: none !important; } html:has(body.home) { scroll-behavior: auto; } }
 @media (max-width: 900px) {
   .h-hero { padding: 24px 16px 10px; gap: 16px; }
-  .h-hero h1 { font-size: 32px; } .h-hero .lead { font-size: 14.5px; }
+  .w-wire, .w-over { stroke-width: 1.8; } .w-wire.in { stroke-width: .6; } .w-spark { stroke-width: 5; } .w-trail { stroke-width: 2.6; }
+  .h-hero h1 { font-size: 38px; } .h-ayk { font-size: 10px; letter-spacing: .24em; margin-right: -.24em; } .h-brand { gap: 8px; } .h-hero .lead { font-size: 14.5px; }
   .glass-wrap { width: 118px; height: 118px; } .glass { border-radius: 20px; }
   .h-stats { gap: 18px; margin-top: 14px; }
   .h-split { grid-template-columns: minmax(0, 1fr); padding: 0 16px 30px; gap: 28px; }
@@ -263,8 +279,8 @@ kbd { font: 600 12px/1.5 ui-monospace, Consolas, monospace; border: 1px solid va
   .tstep { min-height: 62vh; padding-top: 30px; }
   .tstep h3 { font-size: 18px; }
 }
-@media (max-width: 480px) { .glass-wrap { width: 92px; height: 92px; } .h-hero h1 { font-size: 28px; } .h-stats b { font-size: 17px; } }
-@media (prefers-reduced-motion: reduce) { .glass, .g-spin, .g-sheen, .glass-glow { animation: none !important; } }
+@media (max-width: 480px) { .glass-wrap { width: 92px; height: 92px; } .h-hero h1 { font-size: 34px; } .h-stats b { font-size: 17px; } }
+@media (prefers-reduced-motion: reduce) { .glass, .g-spin, .g-sheen, .glass-glow { animation: none !important; } .w-spark, .w-trail { animation: none !important; opacity: 0; } }
 }
 aside { border-right: 1px solid var(--line); background: var(--bg2); display: flex; flex-direction: column; min-height: 0; position: relative; }
 .resizer { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 5; touch-action: none; }
@@ -379,11 +395,11 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
 <body>
 <div id="home">
   <section class="h-hero" id="top">
-    <div><p class="h-eyebrow">AYK Energy · Customer wiring</p><h1>Wirelens</h1>
+    <div><h1 class="h-title" aria-label="Wirelens"><svg class="w-back" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="w-wire" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/><path class="w-wire in" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/></svg><span>Wirelens</span><svg class="w-front" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="w-over" pathLength="100" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/><path class="w-trail" pathLength="100" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/><path class="w-spark" pathLength="100" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/></svg></h1>
       <p class="lead">Interactive 3D wiring guides for AYK battery racks. Open a project to find your rack, then follow every cable step by step.</p>
       <div class="h-stats" id="homeStats"></div></div>
-    <div class="glass-wrap" aria-hidden="true"><div class="glass-glow"></div>
-      <div class="glass"><div class="g-spin"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-5px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-3px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(3px)"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(5px)"></div><div class="g-sheen"></div></div></div>
+    <div class="h-brand"><div class="glass-wrap" aria-hidden="true"><div class="glass-glow"></div>
+      <div class="glass"><div class="g-spin"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-5px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-3px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(3px)"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(5px)"></div><div class="g-sheen"></div></div></div><span class="h-ayk">AYK ENERGY</span></div>
   </section>
   <div class="h-split">
   <section class="tut" id="tutorial" aria-labelledby="tutTitle">
