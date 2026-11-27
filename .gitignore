@@ -16,3 +16,8 @@ projects/
 
 # Server package output (contains confidential project data)
 dist/
+
+# Project drawings (AutoCAD) and project source folders: local only
+*.dwg
+*.DWG
+P[0-9][0-9][0-9][0-9]/

@@ -54,6 +54,8 @@ HULL = False             # --hull: convex hull for parts still > 3x FACE_CAP aft
 # --axes: STEP axis that becomes guide x, y, z ('-n' = that axis negated, keeps a proper rotation), e.g.
 #   'yzx' for STEPs with x = depth (rear at low x), y = along the rack, z = up;
 #   '-zyx' for STEPs with y = up, z = along the rack, x = depth.
+# --mirror-x module,ssc,acdp,jb: the rack is the mirror image of the CAD (e.g. control box moved to the other end):
+#   flip left-right; parts of the listed layers (and parts inside them) keep their own handedness, they only move.
 # --keep module,ssc: layers kept at full detail. --front-ports module: measure the raised sockets on each part's front face.
 # After rotating, the model is shifted so x, y start at 0 and z = 0 at the module front faces.
 AXES = {'xyz': [0, 1, 2], 'yzx': [1, 2, 0], '-zyx': [-3, 1, 0]}   # -n-1 = that axis negated
@@ -77,7 +79,7 @@ def main():
     global DROP, LAYERS, FACE_CAP
     args = sys.argv[1:]
     opt = {}
-    for k in ('--profile', '--axes', '--face-cap', '--keep', '--front-ports'):
+    for k in ('--profile', '--axes', '--face-cap', '--keep', '--front-ports', '--mirror-x'):
         if k in args:
             i = args.index(k); opt[k] = args[i + 1]; del args[i:i + 2]
     if opt.get('--profile'):
@@ -89,6 +91,7 @@ def main():
     keep = set(filter(None, opt.get('--keep', '').split(',')))          # layers shown at full detail (no decimation)
     fports = set(filter(None, opt.get('--front-ports', '').split(',')))  # layers whose front sockets are measured
     FACE_CAP = int(opt.get('--face-cap', FACE_CAP))
+    mirror = set(filter(None, opt['--mirror-x'].split(','))) if '--mirror-x' in opt else None   # layers that keep their handedness
     global HULL
     HULL = '--hull' in args
     if HULL:
@@ -127,6 +130,33 @@ def main():
         for _, _, m in items:
             m.apply_transform(shift)
         print('frame: axes', opt.get('--axes'), 'shift (m)', shift[:3, 3].round(4).tolist())
+
+    if mirror is not None:   # --mirror-x: the drawn rack is the CAD's mirror image (devices on the other side)
+        allv = np.vstack([m.bounds for _, _, m in items])
+        M = np.eye(4); M[0, 0] = -1; M[0, 3] = allv[:, 0].max() + allv[:, 0].min()
+        for _, _, m in items:
+            m.apply_transform(M)
+        # devices keep their real handedness: each listed-layer part, and everything whose centre lies inside it,
+        # is flipped back about that part's own centre (it only moves to the mirrored place)
+        devs = [m.bounds.copy() for _, l, m in items if l in mirror]
+        done = set()
+        for b in sorted(devs, key=lambda b: -np.prod(b[1] - b[0])):     # biggest first: a part belongs to one device
+            lo, hi = b[0] - 0.01, b[1] + 0.01
+            c = (b[0][0] + b[1][0]) / 2
+            F = np.eye(4); F[0, 0] = -1; F[0, 3] = 2 * c
+            for k, (_, l, m) in enumerate(items):
+                if k in done or l in ('frame', 'duct', 'trunk', 'panel'):   # rack structure stays mirrored
+                    continue
+                q = m.bounds.mean(axis=0)
+                if np.all(q >= lo) and np.all(q <= hi):
+                    m.apply_transform(F); done.add(k)
+        mods = [m.bounds[1][2] for _, l, m in items if l == 'module']
+        allv = np.vstack([m.bounds for _, _, m in items])
+        shift = np.eye(4)
+        shift[:3, 3] = [-allv[:, 0].min(), -allv[:, 1].min(), -(max(mods) if mods else allv[:, 2].max())]
+        for _, _, m in items:
+            m.apply_transform(shift)
+        print('frame: mirrored left-right,', len(done), 'parts kept their own handedness; shift (m)', shift[:3, 3].round(4).tolist())
 
     # ---------- measured parts (mm) ----------
     def bb(m):
