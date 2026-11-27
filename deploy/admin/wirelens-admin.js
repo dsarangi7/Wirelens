@@ -12,7 +12,7 @@
  * Dev only:  node wirelens-admin.js config.json --dev you@company.com --static <site folder>
  *   serves the site too and acts as if <you@company.com> had signed in (for testing the panel without nginx).
  *
- * No dependencies (Node 16+). Run under PM2 on the server: see deploy/SERVER.md.
+ * No dependencies (Node 16+). On the server a Task Scheduler task starts it at boot: see deploy/SERVER.md.
  */
 'use strict';
 const http = require('http');

@@ -61,25 +61,40 @@ No nginx reload is needed for updates, and users don't need Ctrl+F5 (the site se
 
 ## Logins and the admin panel
 
-The site asks for a sign-in (nginx `auth_basic`). The users file `C:\nginx\nginx-1.30.3\conf\wirelens.htpasswd`
+The site asks for a sign-in (nginx `auth_basic`). The users file `C:
+ginx
+ginx-1.30.3\conf\wirelens.htpasswd`
 holds one `email:$apr1$...` line per person and is never in git. Admins manage it from the **Users** tab on the
-Wirelens home page; that tab talks to a small service, `deploy\admin\wirelens-admin.js` (Node, no packages), which
-PM2 runs on `127.0.0.1:3015`. nginx re-reads the users file on every request, so changes apply at once.
+Wirelens home page; that tab talks to a small service, `deploydmin\wirelens-admin.js` (Node, no packages), on
+`127.0.0.1:3015`, started at boot by the Task Scheduler task `AYK_Wirelens_Admin` (as SYSTEM, like the other AYK
+tasks). nginx re-reads the users file on every request, so changes apply at once.
 
 Install once (PowerShell as Administrator):
 
-1. Check Node and PM2: `node --version` and `pm2 --version`. Check port 3015 is free:
+1. Check Node (`node --version`) and that port 3015 is free:
    `Get-NetTCPConnection -LocalPort 3015 -State Listen -ErrorAction SilentlyContinue` must print nothing.
 2. Copy `wirelens.htpasswd` and `wirelens-admin.json` (made on the development PC, in `dist\`) to
-   `C:\nginx\nginx-1.30.3\conf\`. The config lists the admin emails (see `deploy\admin\wirelens-admin.example.json`).
-3. Start the service and save it so PM2 brings it back after a reboot:
+   `C:
+ginx
+ginx-1.30.3\conf\`. The config lists the admin emails (see `deploydmin\wirelens-admin.example.json`).
+3. Create and start the task:
    ```powershell
-   pm2 start C:\apps\Wirelens\deploy\admin\wirelens-admin.js --name wirelens-admin -- C:\nginx\nginx-1.30.3\conf\wirelens-admin.json
-   pm2 save
+   $a = New-ScheduledTaskAction -Execute 'C:\Program Files
+odejs
+ode.exe' -Argument 'C:pps\Wirelens\deploydmin\wirelens-admin.js C:
+ginx
+ginx-1.30.3\conf\wirelens-admin.json' -WorkingDirectory 'C:pps\Wirelens'
+   $t = New-ScheduledTaskTrigger -AtStartup
+   $s = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable
+   Register-ScheduledTask -TaskName AYK_Wirelens_Admin -Action $a -Trigger $t -Settings $s -User SYSTEM -RunLevel Highest
+   Start-ScheduledTask -TaskName AYK_Wirelens_Admin
    ```
    Check: `Invoke-RestMethod http://127.0.0.1:3015/health` gives `ok : True`.
 4. Make sure the Wirelens block in `nginx.conf` matches `nginx-wirelens.conf` (the `admin-api` location and the
-   two `auth_basic` lines), then `.\nginx.exe -t` and `.\nginx.exe -s reload`.
+   two `auth_basic` lines), then `.
+ginx.exe -t` and `.
+ginx.exe -s reload`.
 
-Admins are only changed in `wirelens-admin.json` (then `pm2 restart wirelens-admin`); the panel cannot remove an
-admin. `Update-Wirelens.ps1` restarts the service after each update. Logs: `pm2 logs wirelens-admin`.
+Admins are only changed in `wirelens-admin.json` (then restart the task: `Stop-ScheduledTask AYK_Wirelens_Admin;
+Start-ScheduledTask AYK_Wirelens_Admin`); the panel cannot remove an admin. `Update-Wirelens.ps1` restarts the
+task after each update.

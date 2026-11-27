@@ -37,10 +37,11 @@ if ($DataZip) {
   if ($rc -ge 8) { throw "Copying the project data failed (robocopy $rc)" }
 }
 
-# The admin panel service (if installed with PM2) runs code from this folder: restart it to pick up the update.
-if (Get-Command pm2 -ErrorAction SilentlyContinue) {
-  pm2 describe wirelens-admin *> $null
-  if ($LASTEXITCODE -eq 0) { pm2 restart wirelens-admin *> $null; Write-Host '== Restarted the wirelens-admin service' }
+# The admin panel service (Task Scheduler task AYK_Wirelens_Admin, see SERVER.md) runs code from this folder:
+# restart it so it picks up the update.
+if (Get-ScheduledTask -TaskName AYK_Wirelens_Admin -ErrorAction SilentlyContinue) {
+  Stop-ScheduledTask -TaskName AYK_Wirelens_Admin; Start-Sleep -Seconds 1; Start-ScheduledTask -TaskName AYK_Wirelens_Admin
+  Write-Host '== Restarted the Wirelens admin service (AYK_Wirelens_Admin)'
 }
 
 Write-Host '== Check'
