@@ -7,7 +7,7 @@
  * nginx reads the password file on every request, so changes apply at once (no reload).
  *
  *   node wirelens-admin.js [config.json]          (default config: C:/nginx/nginx-1.30.3/conf/wirelens-admin.json)
- *   config: { "htpasswd": "C:/nginx/nginx-1.30.3/conf/wirelens.htpasswd", "admins": ["you@company.com"], "port": 3010 }
+ *   config: { "htpasswd": "C:/nginx/nginx-1.30.3/conf/wirelens.htpasswd", "admins": ["you@company.com"], "port": 3015 }
  *
  * Dev only:  node wirelens-admin.js config.json --dev you@company.com --static <site folder>
  *   serves the site too and acts as if <you@company.com> had signed in (for testing the panel without nginx).
@@ -154,7 +154,7 @@ if (require.main === module) {
   if (!cfg.htpasswd || !Array.isArray(cfg.admins) || !cfg.admins.length) throw new Error(cfgPath + ': needs "htpasswd" and a non-empty "admins" list');
   const devUser = flag('--dev'), root = flag('--static');
   const api = makeHandler(cfg, { devUser });
-  const port = Number(cfg.port || 3010);
+  const port = Number(cfg.port || 3015);
   http.createServer((req, res) => {
     if (root && !/^\/(wirelens\/)?admin-api(\/|$)/.test(req.url)) return staticFile(root, req, res);
     api(req, res).catch(e => { console.error(e); res.writeHead(500); res.end('{"error":"Server error."}'); });

@@ -1,5 +1,5 @@
 {
   "htpasswd": "C:/nginx/nginx-1.30.3/conf/wirelens.htpasswd",
   "admins": ["admin@example.com"],
-  "port": 3010
+  "port": 3015
 }
