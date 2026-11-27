@@ -13,3 +13,6 @@ __pycache__/
 
 # Confidential project rule data (customer projects): local only
 projects/
+
+# Server package output (contains confidential project data)
+dist/

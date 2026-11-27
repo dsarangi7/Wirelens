@@ -46,8 +46,10 @@ function resize() {
   camera.aspect = w / Math.max(h, 1);
   /* keep the subject clear of the info card (desktop: card on the right) */
   const card = document.getElementById('card');
-  const shift = card && !card.hidden && w > 820 ? Math.min(card.offsetWidth + 28, w * 0.45) / 2 : 0;
-  if (shift) camera.setViewOffset(w, h, shift, 0, w, h); else camera.clearViewOffset();
+  const open = card && !card.hidden, phone = innerWidth <= 900;
+  const shift = open && !phone ? Math.min(card.offsetWidth + 28, w * 0.45) / 2 : 0;
+  const lift = open && phone ? Math.min(card.offsetHeight, h * 0.5) / 2 : 0;   /* phone: card is a bottom sheet */
+  if (shift || lift) camera.setViewOffset(w, h, shift, lift, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(host);
@@ -351,6 +353,7 @@ let sparkT = 0;
 function selectCable(id, opts) {
   const c = state.cables.find(x => x.id === id);
   state.sel = c || null; state.step = 0; sparkT = 0;
+  if (c) setDrawer(false);
   renderCard(); renderList(); applyHighlight();
   if (c && !(opts && opts.keepCamera)) focusLeg(0, true);
   if (c && !(opts && opts.noplay)) play(true);
@@ -472,16 +475,16 @@ function harnessRows() {
 function renderHarness() {
   const rows = harnessRows(), total = rows.reduce((n, h) => n + h.length, 0), num = rows.filter(h => h.harness).length;
   $('list').innerHTML = `<div class="hbar"><span>${rows.length} cables · ${num} numbered · ${(total / 1000).toFixed(1)} m</span><button class="btn" id="csvBtn">Download CSV</button></div>
-    <div class="hnote">Length = the cable’s route in this 3D guide, socket to socket or to its inline connector, rounded up to 10 mm. An estimate: no bend or service-loop allowance. Customer cables between racks are not included.</div>
+    <div class="hnote">Length = the cable’s route in this 3D guide, socket to socket or to its inline connector, rounded up to 10 mm. An estimate: no bend or service-loop allowance. Customer cables between racks are not included.${rows.some(h => h.assumed) ? ' * Number not printed on the drawing for this cable: taken from a labelled cable of the same kind. Confirm with the supplier.' : ''}</div>
     <table class="htable"><thead><tr><th>Harness</th><th>Cable</th><th style="text-align:right">mm</th></tr></thead><tbody>` +
-    rows.map(h => `<tr data-id="${esc(h.id)}"${state.sel && state.sel.id === h.id ? ' class="sel"' : ''}><td class="h${h.harness ? '' : ' none'}">${esc(h.harness || '–')}</td><td><i style="background:${GUIDE_CATS[h.cat].color}"></i>${esc(h.title)}</td><td class="n">${h.length.toLocaleString('en-US')}</td></tr>`).join('') + '</tbody></table>';
+    rows.map(h => `<tr data-id="${esc(h.id)}"${state.sel && state.sel.id === h.id ? ' class="sel"' : ''}><td class="h${h.harness ? '' : ' none'}">${esc(h.harness || '–')}${h.assumed ? '<span title="Assumed: same kind as a labelled cable. Confirm with the supplier.">*</span>' : ''}</td><td><i style="background:${GUIDE_CATS[h.cat].color}"></i>${esc(h.title)}</td><td class="n">${h.length.toLocaleString('en-US')}</td></tr>`).join('') + '</tbody></table>';
   $('list').querySelectorAll('tbody tr').forEach(r => r.onclick = () => selectCable(r.dataset.id));
   $('csvBtn').onclick = () => downloadCsv(rows);
 }
 function downloadCsv(rows) {
   const q = v => '"' + String(v).replace(/"/g, '""') + '"';
-  const lines = [['Rack', 'Harness number', 'Cable id', 'From → To', 'Category', 'Group', 'Route length (mm)'].map(q).join(',')]
-    .concat(rows.map(h => [state.rack.name, h.harness, h.id, h.title, (GUIDE_CATS[h.cat] || {}).label || h.cat, h.group, h.length].map(q).join(',')));
+  const lines = [['Rack', 'Harness number', 'Number source', 'Cable id', 'From → To', 'Category', 'Group', 'Route length (mm)'].map(q).join(',')]
+    .concat(rows.map(h => [state.rack.name, h.harness, h.harness ? (h.assumed ? 'Assumed (same kind as a labelled cable, confirm)' : 'Drawing') : '', h.id, h.title, (GUIDE_CATS[h.cat] || {}).label || h.cat, h.group, h.length].map(q).join(',')));
   const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });   /* BOM: Excel opens it as UTF-8 */
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = state.rack.name.replace(/[^\w.-]+/g, '_') + '_harnesses.csv'; document.body.appendChild(a); a.click(); a.remove();
@@ -494,6 +497,15 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   renderList();
 });
 /* drag the right edge of the cable list to resize it (remembered per browser) */
+/* phones / portrait tablets: the cable list is a drawer */
+function setDrawer(open) {
+  const app = document.querySelector('.app'), b = $('listBtn'); if (!app) return;
+  app.classList.toggle('list-open', open); if (b) b.setAttribute('aria-expanded', String(open));
+}
+if ($('listBtn')) $('listBtn').onclick = () => setDrawer(!document.querySelector('.app').classList.contains('list-open'));
+if ($('scrim')) $('scrim').onclick = () => setDrawer(false);
+if ($('sideClose')) $('sideClose').onclick = () => setDrawer(false);
+addEventListener('keydown', e => { if (e.key === 'Escape') setDrawer(false); });
 (function sideResizer() {
   const r = $('resizer'), app = document.querySelector('.app'); if (!r || !app) return;
   const set = w => { w = Math.max(240, Math.min(Math.round(w), Math.round(innerWidth * 0.6))); app.style.setProperty('--side', w + 'px'); return w; };
@@ -545,6 +557,7 @@ function renderCard() {
       <span class="speed" role="group" aria-label="Speed">${Object.keys(SPEEDS).map(k => `<button class="btn sp${k === speed ? ' on' : ''}" data-speed="${k}" aria-pressed="${k === speed}">${k === 'slow' ? 'Slow' : k === 'fast' ? 'Fast' : 'Normal'}</button>`).join('')}</span>
       <span class="grow"></span>
       <span style="color:var(--muted);font-size:12px">Step ${state.step + 1} of ${legs.length}</span>
+      <button class="btn mob" id="minBtn" aria-label="Show more or less">${card.classList.contains('min') ? '▴' : '▾'}</button>
       <button class="btn" id="close" aria-label="Close">✕</button>
     </div>
     <ol class="steps">${legs.map((l, i) => `<li data-i="${i}" class="${i === state.step ? 'cur' : i < state.step ? 'done' : ''}${l.customer ? ' cust' : ''}">${esc(l.rule)}<span class="tn">${esc(l.tn)}</span></li>`).join('')}</ol>`;
@@ -552,6 +565,7 @@ function renderCard() {
   $('next').onclick = () => { play(false); setStep(state.step + 1); };
   $('playBtn').onclick = () => { if (state.playing) play(false); else { if (state.step >= legs.length - 1) setStep(0); else if (sparkT >= 1) sparkT = 0; play(true); } };
   $('close').onclick = () => { play(false); selectCable(null); };
+  $('minBtn').onclick = () => { card.classList.toggle('min'); $('minBtn').textContent = card.classList.contains('min') ? '▴' : '▾'; resize(); };
   card.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { setSpeed(b.dataset.speed); b.parentNode.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   card.querySelectorAll('.steps li').forEach(li => li.onclick = () => { play(false); setStep(+li.dataset.i); });
   const cur = card.querySelector('.steps li.cur'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });

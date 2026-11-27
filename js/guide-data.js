@@ -471,7 +471,7 @@ function guideRouteLength(legs) {
 }
 function guideHarnesses(rack, cables) {
   const list = cables || guideCables(rack), lanes = guideLanes(list);
-  return list.map(c => ({ id: c.id, harness: guideHarnessNo(c), title: c.title, cat: c.cat, front: !!c.front,
+  return list.map(c => ({ id: c.id, harness: guideHarnessNo(c), assumed: !!c.pnAssumed, title: c.title, cat: c.cat, front: !!c.front,
     group: c.group || '', length: guideRouteLength(guideRoute(rack, c, lanes.get(c.id))) }));
 }
 
