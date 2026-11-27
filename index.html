@@ -105,6 +105,32 @@ html:has(body.home) { scroll-behavior: smooth; background: #0c0d10; }
 .hp-grp .hrow + .hrow { margin-top: 6px; }
 .hp-note { color: var(--muted); font-size: 12.5px; margin: 0; }
 .mob-only { display: none !important; }
+/* signed-in line + admin "Users" tab (js/admin.js; only shown when the admin service answers) */
+.h-who { margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
+.h-who b { color: var(--text); font-weight: 600; }
+.hs-tabs { display: flex; gap: 4px; padding: 4px; margin: -4px -4px 16px; border-radius: 10px; background: rgba(255,255,255,.04); }
+.hs-tabs[hidden] { display: none; }
+.hs-tabs button { flex: 1; border: 0; border-radius: 7px; padding: 7px 10px; background: transparent; color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer; }
+.hs-tabs button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 2px 8px rgba(0,0,0,.3); }
+.ad-card { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 14px; margin-top: 12px; }
+.ad-card h3 { margin: 0 0 10px; font-size: 14px; } .ad-card h3 span { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.ad-l { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+.ad-card .search { background: var(--bg2); }
+.ad-pw { display: flex; gap: 6px; } .ad-pw .search { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; }
+.ad-pw .btn { color: var(--text); }
+.ad-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.ad-row .btn { color: var(--text); } .ad-row .btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ad-msg { font-size: 12.5px; } .ad-msg.good { color: #6fd39a; } .ad-msg.bad { color: #ff8a80; }
+.ad-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.ad-user { border-top: 1px solid var(--line); padding: 9px 0; } .ad-user:first-child { border-top: 0; padding-top: 0; }
+.ad-u { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ad-u .grow { flex: 1; }
+.ad-u .btn { color: var(--text); padding: 4px 9px; font-size: 12px; }
+.ad-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(47,111,214,.18); color: #9cc0f5; font-weight: 800; font-size: 12px; flex: none; }
+.ad-name { font-size: 13px; overflow-wrap: anywhere; }
+.ad-badge { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #9cc0f5; border: 1px solid rgba(111,160,236,.45); border-radius: 999px; padding: 0 6px; }
+.ad-del:hover { border-color: rgba(255,138,128,.6); color: #ff8a80 !important; }
+.ad-reset { padding: 4px 0 4px 36px; }
 /* glass panel with the rotating AYK logo */
 .glass-wrap { position: relative; width: 210px; height: 210px; perspective: 900px; flex: none; }
 .glass-glow { position: absolute; inset: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(47,111,214,.55), rgba(47,111,214,0) 70%); filter: blur(26px); animation: g-glow 7s ease-in-out infinite alternate; }
@@ -397,7 +423,7 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
   <section class="h-hero" id="top">
     <div><h1 class="h-title" aria-label="Wirelens"><svg class="w-back" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="w-wire" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/><path class="w-wire in" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/></svg><span>Wirelens</span><svg class="w-front" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="w-over" pathLength="100" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/><path class="w-trail" pathLength="100" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/><path class="w-spark" pathLength="100" d="M-3 74 C 4 74, 6 40, 13 46 S 22 82, 30 62 S 40 22, 48 44 S 58 84, 66 58 S 76 20, 84 42 S 94 78, 103 60"/></svg></h1>
       <p class="lead">Interactive 3D wiring guides for AYK battery racks. Open a project to find your rack, then follow every cable step by step.</p>
-      <div class="h-stats" id="homeStats"></div></div>
+      <div class="h-stats" id="homeStats"></div><p class="h-who" id="homeWho" hidden></p></div>
     <div class="h-brand"><div class="glass-wrap" aria-hidden="true"><div class="glass-glow"></div>
       <div class="glass"><div class="g-spin"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-5px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-3px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(-1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(1px)"><img class="d" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(3px)"><img class="f" src="assets/ayk-energy-logo.png" alt="" style="transform:translateZ(5px)"></div><div class="g-sheen"></div></div></div><span class="h-ayk">AYK ENERGY</span></div>
   </section>
@@ -554,7 +580,8 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
     </div>
     <div class="tut-end">That's everything. <a class="btn" href="#top">↑ Back to top</a></div>
   </section>
-  <aside class="h-side" aria-label="Projects"><div id="homeMain"></div></aside>
+  <aside class="h-side" aria-label="Projects"><div class="hs-tabs" id="hsTabs" role="tablist" hidden><button class="on" data-hs="projects" role="tab" aria-selected="true">Projects</button><button data-hs="users" role="tab" aria-selected="false">Users</button></div>
+    <div id="homeMain"></div><div id="adminMain" hidden></div></aside>
   </div>
 </div>
 <div class="app">
@@ -597,5 +624,6 @@ aside { border-right: 1px solid var(--line); background: var(--bg2); display: fl
 <script src="js/racks.js?v=6"></script>
 <script src="js/guide-data.js?v=6"></script>
 <script type="module" src="js/guide3d.js?v=6"></script>
+<script src="js/admin.js?v=6"></script>
 </body>
 </html>

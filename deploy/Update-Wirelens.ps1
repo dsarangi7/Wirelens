@@ -37,6 +37,12 @@ if ($DataZip) {
   if ($rc -ge 8) { throw "Copying the project data failed (robocopy $rc)" }
 }
 
+# The admin panel service (if installed with PM2) runs code from this folder: restart it to pick up the update.
+if (Get-Command pm2 -ErrorAction SilentlyContinue) {
+  pm2 describe wirelens-admin *> $null
+  if ($LASTEXITCODE -eq 0) { pm2 restart wirelens-admin *> $null; Write-Host '== Restarted the wirelens-admin service' }
+}
+
 Write-Host '== Check'
 $need = 'index.html', 'js\guide3d.js', 'js\guide-data.js', 'js\racks.js', 'assets\guide\racks.json', 'projects\racks.local.json'
 $missing = $need | Where-Object { -not (Test-Path (Join-Path $Path $_)) }

@@ -58,3 +58,28 @@ No nginx reload is needed for updates, and users don't need Ctrl+F5 (the site se
 - Troubleshooting: 404 on everything → the `alias` path in nginx.conf is wrong (must end with `/`);
   racks show but a model does not load → check the `.glb` line in the `types` block; "Loading the rack…" hangs →
   run Update-Wirelens.ps1 without `-DataZip` and read its check output.
+
+## Logins and the admin panel
+
+The site asks for a sign-in (nginx `auth_basic`). The users file `C:\nginx\nginx-1.30.3\conf\wirelens.htpasswd`
+holds one `email:$apr1$...` line per person and is never in git. Admins manage it from the **Users** tab on the
+Wirelens home page; that tab talks to a small service, `deploy\admin\wirelens-admin.js` (Node, no packages), which
+PM2 runs on `127.0.0.1:3010`. nginx re-reads the users file on every request, so changes apply at once.
+
+Install once (PowerShell as Administrator):
+
+1. Check Node and PM2: `node --version` and `pm2 --version`. Check port 3010 is free:
+   `Get-NetTCPConnection -LocalPort 3010 -State Listen -ErrorAction SilentlyContinue` must print nothing.
+2. Copy `wirelens.htpasswd` and `wirelens-admin.json` (made on the development PC, in `dist\`) to
+   `C:\nginx\nginx-1.30.3\conf\`. The config lists the admin emails (see `deploy\admin\wirelens-admin.example.json`).
+3. Start the service and save it so PM2 brings it back after a reboot:
+   ```powershell
+   pm2 start C:\apps\Wirelens\deploy\admin\wirelens-admin.js --name wirelens-admin -- C:\nginx\nginx-1.30.3\conf\wirelens-admin.json
+   pm2 save
+   ```
+   Check: `Invoke-RestMethod http://127.0.0.1:3010/health` gives `ok : True`.
+4. Make sure the Wirelens block in `nginx.conf` matches `nginx-wirelens.conf` (the `admin-api` location and the
+   two `auth_basic` lines), then `.\nginx.exe -t` and `.\nginx.exe -s reload`.
+
+Admins are only changed in `wirelens-admin.json` (then `pm2 restart wirelens-admin`); the panel cannot remove an
+admin. `Update-Wirelens.ps1` restarts the service after each update. Logs: `pm2 logs wirelens-admin`.
